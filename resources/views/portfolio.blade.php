@@ -12,28 +12,17 @@
         <title>{{ config('app.name', 'Portfolio') }}</title>
 
         <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=cormorant-garamond:400,500,600,700|outfit:300,400,500,600&display=swap" rel="stylesheet" />
+        <link href="https://fonts.bunny.net/css?family=manrope:400,500,600,700|space-grotesk:400,500,600,700&display=swap" rel="stylesheet" />
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="min-h-full overflow-hidden bg-mystic-950 font-sans text-mystic-100 antialiased">
         <div id="loader" class="loader" role="status" aria-live="polite" aria-busy="true">
-            <video
-                id="loader-video"
-                class="loader__video"
-                src="{{ asset('videos/loading-trim.mp4') }}"
-                muted
-                playsinline
-                preload="auto"
-                aria-hidden="true"
-            ></video>
-            <div class="loader__veil" aria-hidden="true"></div>
-            <div class="loader__mist" aria-hidden="true"></div>
-            <div class="loader__grain" aria-hidden="true"></div>
             <div class="loader__content">
-                <p class="loader__tagline font-display text-lg font-medium tracking-[0.2em] text-mystic-200/95 md:text-xl">
-                    Entering the veil…
+                <p class="loader__hello font-display" lang="ar">
+                    <span id="loader-hello" class="loader__hello-word" dir="rtl">السلام عليكم</span>
                 </p>
+                <p id="loader-hello-label" class="loader__hello-label">العربية</p>
                 <div class="loader__line" aria-hidden="true"></div>
             </div>
         </div>
