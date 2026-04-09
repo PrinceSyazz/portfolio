@@ -3,31 +3,32 @@ const loaderHelloEl = document.getElementById('loader-hello');
 const loaderHelloLabelEl = document.getElementById('loader-hello-label');
 
 const LOADER_GREETINGS = [
-    { lang: 'ar', label: 'العربية', text: 'السلام عليكم' },
-    { lang: 'en', label: 'English', text: 'Hello' },
-    { lang: 'es', label: 'Español', text: 'Hola' },
-    { lang: 'fr', label: 'Français', text: 'Bonjour' },
-    { lang: 'de', label: 'Deutsch', text: 'Hallo' },
-    { lang: 'it', label: 'Italiano', text: 'Ciao' },
-    { lang: 'pt', label: 'Português', text: 'Olá' },
-    { lang: 'ja', label: '日本語', text: 'こんにちは' },
-    { lang: 'ko', label: '한국어', text: '안녕하세요' },
-    { lang: 'zh-CN', label: '中文', text: '你好' },
-    { lang: 'ms', label: 'Bahasa Melayu', text: 'Hai' },
-    { lang: 'th', label: 'ภาษาไทย', text: 'สวัสดี' },
-    { lang: 'hi', label: 'हिन्दी', text: 'नमस्ते' },
-    { lang: 'ru', label: 'Русский', text: 'Привет' },
+    { lang: 'ar', label: 'Arabic', text: 'السلام عليكم' },
+    { lang: 'es', label: 'Spanish', text: 'Hola' },
+    { lang: 'fr', label: 'French', text: 'Bonjour' },
+    { lang: 'de', label: 'German', text: 'Hallo' },
+    { lang: 'it', label: 'Italian', text: 'Ciao' },
+    { lang: 'pt', label: 'Portuguese', text: 'Olá' },
+    { lang: 'ja', label: 'Japanese', text: 'こんにちは' },
+    { lang: 'ko', label: 'Korean', text: '안녕하세요' },
+    { lang: 'zh-CN', label: 'Chinese', text: '你好' },
+    { lang: 'ms', label: 'Malay', text: 'Apa khabar' },
+    { lang: 'th', label: 'Thai', text: 'สวัสดี' },
+    { lang: 'hi', label: 'Hindi', text: 'नमस्ते' },
+    { lang: 'ru', label: 'Russian', text: 'Привет' },
     { lang: 'tl', label: 'Tagalog', text: 'Kumusta' },
-    { lang: 'el', label: 'Ελληνικά', text: 'Γεια σας' },
-    { lang: 'sw', label: 'Kiswahili', text: 'Jambo' },
+    { lang: 'el', label: 'Greek', text: 'Γεια σας' },
+    { lang: 'en', label: 'English', text: 'Hello' },
 ];
 
-const LOADER_MIN_MS = 1800;
-const LOADER_HELLO_INTERVAL_MS = 240;
+const LOADER_HELLO_INTERVAL_MS = 300;
+const LOADER_MIN_MS = Math.max(2600, LOADER_HELLO_INTERVAL_MS * (LOADER_GREETINGS.length - 1) + 300);
 const LOADER_FIRST_VISIT_KEY = 'portfolio-loader-first-visit-done';
+const LOADER_START_LANG = 'ar';
 
 let loaderHelloTimer = null;
-let loaderHelloIndex = 0;
+let loaderHelloIndex = LOADER_GREETINGS.findIndex((g) => g.lang === LOADER_START_LANG);
+if (loaderHelloIndex < 0) loaderHelloIndex = 0;
 
 function getNavigationType() {
     const entries = performance.getEntriesByType('navigation');
@@ -61,6 +62,10 @@ function isFirstVisit() {
 
 /** Show intro only on first-ever visit, or when user refreshes Home page. */
 function shouldPlayIntroLoader() {
+    if (import.meta.env.DEV) {
+        return true;
+    }
+
     const navType = getNavigationType();
     if (isFirstVisit()) {
         return true;
@@ -113,9 +118,25 @@ function applyLoaderGreeting(index) {
 
 function startLoaderHelloCycle() {
     if (!loaderHelloEl || LOADER_GREETINGS.length < 2) return;
+    let remainingTransitions = LOADER_GREETINGS.length - 1;
     loaderHelloTimer = window.setInterval(() => {
+        if (remainingTransitions <= 0) {
+            window.clearInterval(loaderHelloTimer);
+            loaderHelloTimer = null;
+            return;
+        }
+
         loaderHelloIndex = (loaderHelloIndex + 1) % LOADER_GREETINGS.length;
+        if (LOADER_GREETINGS[loaderHelloIndex].lang === LOADER_START_LANG) {
+            loaderHelloIndex = (loaderHelloIndex + 1) % LOADER_GREETINGS.length;
+        }
         applyLoaderGreeting(loaderHelloIndex);
+
+        remainingTransitions -= 1;
+        if (remainingTransitions <= 0) {
+            window.clearInterval(loaderHelloTimer);
+            loaderHelloTimer = null;
+        }
     }, LOADER_HELLO_INTERVAL_MS);
 }
 
@@ -127,6 +148,7 @@ function initLoader() {
         return;
     }
 
+    applyLoaderGreeting(loaderHelloIndex);
     startLoaderHelloCycle();
 
     const pageLoaded = new Promise((resolve) => {
