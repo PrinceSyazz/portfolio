@@ -24,6 +24,7 @@ const LOADER_GREETINGS = [
 
 const LOADER_MIN_MS = 1800;
 const LOADER_HELLO_INTERVAL_MS = 240;
+const LOADER_FIRST_VISIT_KEY = 'portfolio-loader-first-visit-done';
 
 let loaderHelloTimer = null;
 let loaderHelloIndex = 0;
@@ -40,21 +41,32 @@ function getNavigationType() {
     return 'navigate';
 }
 
-/** Full intro: first open / direct entry / external link, or explicit refresh — not in-site link clicks. */
+function isHomePath() {
+    const path = (window.location.pathname || '').replace(/\/+$/, '') || '/';
+    return path === '/';
+}
+
+function isFirstVisit() {
+    try {
+        const seen = localStorage.getItem(LOADER_FIRST_VISIT_KEY) === '1';
+        if (!seen) {
+            localStorage.setItem(LOADER_FIRST_VISIT_KEY, '1');
+            return true;
+        }
+        return false;
+    } catch {
+        return false;
+    }
+}
+
+/** Show intro only on first-ever visit, or when user refreshes Home page. */
 function shouldPlayIntroLoader() {
     const navType = getNavigationType();
-    if (navType === 'reload') {
+    if (isFirstVisit()) {
         return true;
     }
-    const ref = document.referrer;
-    if (!ref) {
-        return true;
-    }
-    try {
-        return new URL(ref).origin !== window.location.origin;
-    } catch {
-        return true;
-    }
+
+    return navType === 'reload' && isHomePath();
 }
 
 function dismissLoaderInstant() {
