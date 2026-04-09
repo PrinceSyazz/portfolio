@@ -161,6 +161,199 @@
         @apply bg-gradient-to-r from-mystic-200 via-mystic-400 to-purple-300 bg-clip-text text-transparent;
     }
 
+    .nav-main__link {
+        @apply border-b-2 border-transparent pb-0.5 text-mystic-300 transition hover:text-mystic-100;
+    }
+
+    .nav-main__link--active {
+        @apply border-white font-medium text-white;
+    }
+
+    .credential-nav__link {
+        @apply border-b-2 border-transparent pb-0.5 text-mystic-400 transition hover:text-mystic-200;
+    }
+
+    .credential-nav__link--active {
+        @apply border-white font-medium text-white;
+    }
+
+    .event-card {
+        @apply flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] shadow-[0_0_40px_rgba(88,28,135,0.15)] backdrop-blur-md;
+    }
+
+    .event-card__media {
+        @apply relative h-44 w-full bg-mystic-900/80;
+    }
+
+    .event-card__media img {
+        @apply h-full w-full object-cover;
+    }
+
+    .event-card__fallback {
+        @apply absolute inset-0 flex flex-col justify-end bg-[linear-gradient(160deg,rgba(88,28,135,0.35)_0%,rgba(24,16,44,0.85)_60%,rgba(10,6,18,0.95)_100%)] p-5;
+    }
+
+    .event-card__domain {
+        @apply text-xs uppercase tracking-widest text-purple-300/85;
+    }
+
+    .event-card__body {
+        @apply flex flex-1 flex-col p-6;
+    }
+
+    .event-card__meta {
+        @apply text-xs uppercase tracking-wide text-mystic-400;
+    }
+
+    .event-card__title {
+        @apply mt-3 font-display text-xl font-semibold text-mystic-50;
+    }
+
+    .event-card__description {
+        @apply mt-3 flex-1 text-sm leading-relaxed text-mystic-300;
+    }
+
+    .event-card__links {
+        @apply mt-5 flex items-center justify-between gap-3;
+    }
+
+    .event-card__view-link {
+        @apply inline-flex items-center gap-2 text-sm font-medium text-purple-300 transition hover:text-purple-200;
+    }
+
+    .event-card__controls {
+        @apply hidden items-center gap-2;
+    }
+
+    body.editing-mode .event-card__controls {
+        @apply inline-flex;
+    }
+
+    .event-card__button {
+        @apply rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-mystic-200 transition hover:border-purple-400/45 hover:bg-white/10;
+    }
+
+    .event-card__button--danger {
+        @apply border-rose-500/35 text-rose-200 hover:border-rose-400/60 hover:bg-rose-500/10;
+    }
+
+    .events-editor {
+        @apply rounded-2xl border border-white/10 bg-white/[0.04] p-6 shadow-[0_0_40px_rgba(88,28,135,0.15)] backdrop-blur-md md:p-8;
+    }
+
+    .events-editor__field {
+        @apply flex flex-col gap-2;
+    }
+
+    .events-editor__label {
+        @apply text-sm font-medium text-mystic-200;
+    }
+
+    .events-editor__input {
+        @apply rounded-xl border border-white/10 bg-mystic-900/70 px-4 py-2.5 text-sm text-mystic-100 outline-none transition placeholder:text-mystic-500 focus:border-purple-400/60;
+    }
+
+    .events-editor__dropzone {
+        @apply flex min-h-28 w-full flex-col items-center justify-center rounded-xl border border-dashed border-white/25 bg-mystic-900/55 px-4 py-4 text-sm text-mystic-200 transition hover:border-purple-400/55 hover:bg-mystic-900/70;
+    }
+
+    .events-editor__dropzone--active {
+        @apply border-purple-400/80 bg-mystic-900/80;
+    }
+
+    .events-editor__dropzone-note {
+        @apply mt-2 text-xs text-mystic-400;
+    }
+
+    .events-editor__actions {
+        @apply flex flex-wrap items-center gap-3 pt-2;
+    }
+
+    .events-editor__button {
+        @apply rounded-full border border-white/15 bg-white/5 px-5 py-2 text-sm font-medium text-mystic-100 transition hover:border-purple-400/45 hover:bg-white/10;
+    }
+
+    .events-editor__button--primary {
+        @apply border-purple-500/35 bg-purple-500/15 text-mystic-50 hover:border-purple-400/60 hover:bg-purple-500/25;
+    }
+
+    .featured-carousel-container {
+        @apply relative flex w-full max-w-4xl items-center justify-center;
+    }
+
+    .featured-carousel {
+        @apply relative w-full;
+        min-height: 500px;
+    }
+
+    .featured-carousel__arrow {
+        @apply absolute top-1/2 -translate-y-1/2 rounded-full border border-white/15 bg-white/5 p-3 text-mystic-200 transition hover:border-purple-400/45 hover:bg-white/10 hover:text-mystic-50 disabled:opacity-50;
+        z-index: 20;
+    }
+
+    .featured-carousel__arrow--prev {
+        @apply left-4;
+    }
+
+    .featured-carousel__arrow--next {
+        @apply right-4;
+    }
+
+    .featured-carousel-item {
+        @apply transition-opacity duration-500;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .featured-carousel-item--active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .event-list-item {
+        @apply flex gap-6 rounded-2xl border border-white/10 bg-white/[0.04] p-6 shadow-[0_0_40px_rgba(88,28,135,0.15)] backdrop-blur-md transition hover:border-purple-400/30 hover:shadow-[0_0_48px_rgba(88,28,135,0.2)] md:p-8;
+    }
+
+    .event-list-item__content {
+        @apply flex-1;
+    }
+
+    .event-list-item__meta {
+        @apply text-xs uppercase tracking-wide text-mystic-400;
+    }
+
+    .event-list-item__date {
+        @apply text-sm font-medium text-purple-300;
+    }
+
+    .event-list-item__title {
+        @apply mt-3 font-display text-2xl font-semibold text-mystic-50;
+    }
+
+    .event-list-item__description {
+        @apply mt-4 text-sm leading-relaxed text-mystic-300;
+    }
+
+    .event-list-item__link {
+        @apply mt-4 inline-flex items-center gap-2 text-sm font-medium text-purple-300 transition hover:text-purple-200;
+    }
+
+    .event-list-item__image {
+        @apply h-48 w-48 flex-shrink-0 overflow-hidden rounded-xl bg-mystic-900/80;
+    }
+
+    .event-list-item__image img {
+        @apply h-full w-full object-cover;
+    }
+
+    .event-list-item__fallback {
+        @apply flex h-full w-full flex-col justify-end bg-[linear-gradient(160deg,rgba(88,28,135,0.35)_0%,rgba(24,16,44,0.85)_60%,rgba(10,6,18,0.95)_100%)] p-4 text-center;
+    }
+
+    .event-list-item__domain {
+        @apply text-xs uppercase tracking-widest text-purple-300/85;
+    }
+
     .edit-mode-banner {
         @apply fixed bottom-0 left-0 right-0 z-[60] border-t border-purple-500/30 bg-mystic-950/95 px-4 py-3 text-center text-sm text-mystic-200 shadow-[0_-8px_40px_rgba(88,28,135,0.25)] backdrop-blur-md;
     }
@@ -169,7 +362,7 @@
         @apply rounded-sm outline outline-1 outline-offset-[6px] outline-purple-400/50;
     }
 
-    body.editing-mode header nav a[href^='#'] {
+    body.editing-mode .site-header__link {
         pointer-events: none;
         opacity: 0.55;
     }

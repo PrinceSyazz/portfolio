@@ -16,4 +16,16 @@ class ExampleTest extends TestCase
 
         $response->assertStatus(200);
     }
+
+    public function test_main_pages_return_success(): void
+    {
+        foreach (['/', '/about', '/project', '/credential/education', '/credential/experience', '/credential/certification', '/contact'] as $path) {
+            $this->get($path)->assertOk();
+        }
+    }
+
+    public function test_credential_redirects_to_education(): void
+    {
+        $this->get('/credential')->assertRedirect('/credential/education');
+    }
 }

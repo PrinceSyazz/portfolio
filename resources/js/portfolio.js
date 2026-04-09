@@ -28,6 +28,45 @@ const LOADER_HELLO_INTERVAL_MS = 240;
 let loaderHelloTimer = null;
 let loaderHelloIndex = 0;
 
+function getNavigationType() {
+    const entries = performance.getEntriesByType('navigation');
+    if (entries.length > 0 && entries[0].type) {
+        return entries[0].type;
+    }
+    if (typeof performance.navigation !== 'undefined') {
+        if (performance.navigation.type === 1) return 'reload';
+        if (performance.navigation.type === 2) return 'back_forward';
+    }
+    return 'navigate';
+}
+
+/** Full intro: first open / direct entry / external link, or explicit refresh — not in-site link clicks. */
+function shouldPlayIntroLoader() {
+    const navType = getNavigationType();
+    if (navType === 'reload') {
+        return true;
+    }
+    const ref = document.referrer;
+    if (!ref) {
+        return true;
+    }
+    try {
+        return new URL(ref).origin !== window.location.origin;
+    } catch {
+        return true;
+    }
+}
+
+function dismissLoaderInstant() {
+    if (!loader) return;
+    if (loaderHelloTimer != null) {
+        window.clearInterval(loaderHelloTimer);
+        loaderHelloTimer = null;
+    }
+    loader.remove();
+    document.body.classList.remove('overflow-hidden');
+}
+
 function hideLoader() {
     if (!loader) return;
     if (loaderHelloTimer != null) {
@@ -71,6 +110,11 @@ function startLoaderHelloCycle() {
 function initLoader() {
     if (!loader) return;
 
+    if (!shouldPlayIntroLoader()) {
+        dismissLoaderInstant();
+        return;
+    }
+
     startLoaderHelloCycle();
 
     const pageLoaded = new Promise((resolve) => {
@@ -91,81 +135,6 @@ function initLoader() {
 }
 
 initLoader();
-
-const SECTION_IDS = ['home', 'about', 'skills', 'work', 'contact'];
-const navLinks = document.querySelectorAll('[data-nav-section]');
-
-function getActiveSectionId() {
-    const sections = SECTION_IDS.map((id) => document.getElementById(id)).filter(Boolean);
-    if (!sections.length) return 'home';
-
-    const viewportMid = window.innerHeight * 0.38;
-    let bestId = 'home';
-    let bestScore = -Infinity;
-
-    sections.forEach((el) => {
-        const r = el.getBoundingClientRect();
-        const center = r.top + r.height / 2;
-        const visible = Math.min(r.bottom, window.innerHeight) - Math.max(r.top, 0);
-        const score = visible > 0 ? visible - Math.abs(center - viewportMid) * 0.02 : -1e9;
-        if (score > bestScore) {
-            bestScore = score;
-            bestId = el.id;
-        }
-    });
-
-    return bestId;
-}
-
-function syncNavActive() {
-    const id = getActiveSectionId();
-    navLinks.forEach((a) => {
-        const on = a.getAttribute('data-nav-section') === id;
-        a.classList.toggle('vr-dock__link--active', on);
-        if (on) {
-            a.setAttribute('aria-current', 'page');
-        } else {
-            a.removeAttribute('aria-current');
-        }
-    });
-}
-
-let navRaf = 0;
-function onScrollNav() {
-    if (navRaf) return;
-    navRaf = window.requestAnimationFrame(() => {
-        navRaf = 0;
-        syncNavActive();
-    });
-}
-
-window.addEventListener('scroll', onScrollNav, { passive: true });
-window.addEventListener('resize', onScrollNav, { passive: true });
-window.addEventListener('load', syncNavActive, { once: true });
-syncNavActive();
-
-function scrollToSection(id) {
-    const el = document.querySelector(id);
-    if (!el) return;
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    window.setTimeout(syncNavActive, 480);
-}
-
-document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
-    anchor.addEventListener('click', (e) => {
-        if (document.body.classList.contains('editing-mode')) {
-            e.preventDefault();
-            return;
-        }
-        const id = anchor.getAttribute('href');
-        if (!id || id === '#') return;
-        const el = document.querySelector(id);
-        if (el) {
-            e.preventDefault();
-            scrollToSection(id);
-        }
-    });
-});
 
 const revealEls = document.querySelectorAll('[data-reveal]');
 if ('IntersectionObserver' in window && revealEls.length) {
