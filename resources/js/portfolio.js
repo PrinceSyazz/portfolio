@@ -29,7 +29,6 @@ const LOADER_START_LANG = 'ar';
 let loaderHelloTimer = null;
 let loaderHelloIndex = LOADER_GREETINGS.findIndex((g) => g.lang === LOADER_START_LANG);
 if (loaderHelloIndex < 0) loaderHelloIndex = 0;
-
 function getNavigationType() {
     const entries = performance.getEntriesByType('navigation');
     if (entries.length > 0 && entries[0].type) {
@@ -116,29 +115,29 @@ function applyLoaderGreeting(index) {
     }, 55);
 }
 
-function startLoaderHelloCycle() {
-    if (!loaderHelloEl || LOADER_GREETINGS.length < 2) return;
-    let remainingTransitions = LOADER_GREETINGS.length - 1;
-    loaderHelloTimer = window.setInterval(() => {
+    function startLoaderHelloCycle() {
+      if (!loaderHelloEl || LOADER_GREETINGS.length < 2) return;
+      let remainingTransitions = LOADER_GREETINGS.length - 1;
+      loaderHelloTimer = window.setInterval(() => {
         if (remainingTransitions <= 0) {
-            window.clearInterval(loaderHelloTimer);
-            loaderHelloTimer = null;
-            return;
+          window.clearInterval(loaderHelloTimer);
+          loaderHelloTimer = null;
+          return;
         }
 
         loaderHelloIndex = (loaderHelloIndex + 1) % LOADER_GREETINGS.length;
         if (LOADER_GREETINGS[loaderHelloIndex].lang === LOADER_START_LANG) {
-            loaderHelloIndex = (loaderHelloIndex + 1) % LOADER_GREETINGS.length;
+          loaderHelloIndex = (loaderHelloIndex + 1) % LOADER_GREETINGS.length;
         }
         applyLoaderGreeting(loaderHelloIndex);
 
         remainingTransitions -= 1;
         if (remainingTransitions <= 0) {
-            window.clearInterval(loaderHelloTimer);
-            loaderHelloTimer = null;
+          window.clearInterval(loaderHelloTimer);
+          loaderHelloTimer = null;
         }
-    }, LOADER_HELLO_INTERVAL_MS);
-}
+      }, LOADER_HELLO_INTERVAL_MS);
+    }
 
 function initLoader() {
     if (!loader) return;
@@ -152,10 +151,10 @@ function initLoader() {
     startLoaderHelloCycle();
 
     const pageLoaded = new Promise((resolve) => {
-        if (document.readyState === 'complete') {
+      if (document.readyState === 'complete') {
             resolve();
         } else {
-            window.addEventListener('load', resolve, { once: true });
+        window.addEventListener('load', resolve, { once: true });
         }
     });
 
@@ -164,11 +163,11 @@ function initLoader() {
     });
 
     Promise.all([pageLoaded, minVisible]).then(() => {
-        hideLoader();
+      hideLoader();
     });
 }
 
-initLoader();
+  initLoader();
 
 const revealEls = document.querySelectorAll('[data-reveal]');
 if ('IntersectionObserver' in window && revealEls.length) {
