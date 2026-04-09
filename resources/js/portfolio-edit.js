@@ -1,5 +1,6 @@
 const STORAGE_KEY = 'portfolio-edits-v1';
 const EVENTS_KEY = 'portfolio-events-v2';
+const ABOUT_KEY = 'portfolio-about-v1';
 const DEFAULT_EVENTS = [];
 
 let editingMode = false;
@@ -7,6 +8,7 @@ let periodHeld = false;
 let secretLeftClicks = 0;
 let pendingUploadImageData = '';
 let editingEventImageData = '';
+let aboutImageRotateInterval = null;
 
 function getLoaderEl() {
     return document.getElementById('loader');
@@ -308,7 +310,21 @@ function renderFeaturedCarousel() {
     carouselState.currentIndex = 0;
 
     if (carouselState.events.length === 0) {
-        carouselRoot.innerHTML = '<p class="glass-panel p-6 text-mystic-300">No featured events yet. Enter editing mode to create one.</p>';
+        carouselRoot.innerHTML = `
+            <article class="event-card featured-carousel-item featured-carousel-item--active event-card--empty">
+                <div class="event-card__media">
+                    <div class="event-card__fallback">
+                        <p class="event-card__domain">Featured Events</p>
+                        <p class="mt-2 text-sm text-mystic-200">No featured events yet</p>
+                    </div>
+                </div>
+                <div class="event-card__body">
+                    <p class="event-card__meta">Date TBD</p>
+                    <h3 class="event-card__title">Add your first event</h3>
+                    <p class="event-card__description">Enter editing mode and create an event to start the auto carousel.</p>
+                </div>
+            </article>
+        `;
         stopCarouselAutoRotate();
         return;
     }
@@ -323,15 +339,29 @@ function renderAllEventsList() {
     if (!listRoot) return;
 
     const sorted = sortEventsNewest(loadEvents());
+    const nonFeatured = sorted.slice(5);
 
-    listRoot.innerHTML = sorted.length
-        ? sorted.map((event) => renderEventListItem(event)).join('')
-        : '<p class="glass-panel p-6 text-mystic-300 text-center py-12">No events yet.</p>';
+    listRoot.innerHTML = nonFeatured.length
+        ? nonFeatured.map((event) => renderEventListItem(event)).join('')
+        : '<p class="glass-panel p-6 text-mystic-300 text-center py-12">No other events yet.</p>';
 }
 
 function renderEvents() {
     renderFeaturedCarousel();
     renderAllEventsList();
+}
+
+function initOtherEventsToggle() {
+    const trigger = document.getElementById('view-other-events-trigger');
+    const section = document.getElementById('other-events');
+    if (!trigger || !section) return;
+
+    trigger.addEventListener('click', (e) => {
+        e.preventDefault();
+        section.hidden = false;
+        section.setAttribute('aria-hidden', 'false');
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
 }
 
 function getEventFormEls() {
@@ -522,6 +552,409 @@ function initEventCrud() {
     });
 }
 
+function readFileAsDataUrl(file) {
+    return new Promise((resolve) => {
+        if (!file) {
+            resolve('');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            resolve(typeof reader.result === 'string' ? reader.result : '');
+        };
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(file);
+    });
+}
+
+function clampPercent(value) {
+    const numeric = Number(value);
+    if (Number.isNaN(numeric)) return 0;
+    return Math.max(0, Math.min(100, Math.round(numeric)));
+}
+
+function loadAboutData() {
+    const fallback = {
+        profileImages: [],
+        cvDataUrl: '',
+        cvFileName: '',
+        languages: [],
+        skills: [],
+    };
+
+    try {
+        const raw = localStorage.getItem(ABOUT_KEY);
+        if (!raw) return fallback;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') return fallback;
+
+        const profileImages = Array.isArray(parsed.profileImages)
+            ? parsed.profileImages.filter((src) => typeof src === 'string' && src.startsWith('data:image/'))
+            : [];
+
+        const languages = Array.isArray(parsed.languages)
+            ? parsed.languages
+                  .map((item) => ({
+                      name: String(item.name || '').trim(),
+                      speaking: clampPercent(item.speaking),
+                      writing: clampPercent(item.writing),
+                  }))
+                  .filter((item) => item.name.length > 0)
+            : [];
+
+        const skills = Array.isArray(parsed.skills)
+            ? parsed.skills
+                  .map((item) => ({
+                      name: String(item.name || '').trim(),
+                      percentage: clampPercent(item.percentage),
+                  }))
+                  .filter((item) => item.name.length > 0)
+            : [];
+
+        return {
+            profileImages,
+            cvDataUrl: typeof parsed.cvDataUrl === 'string' ? parsed.cvDataUrl : '',
+            cvFileName: typeof parsed.cvFileName === 'string' ? parsed.cvFileName : '',
+            languages,
+            skills,
+        };
+    } catch {
+        return fallback;
+    }
+}
+
+function saveAboutData(data) {
+    try {
+        localStorage.setItem(ABOUT_KEY, JSON.stringify(data));
+    } catch {
+        /* ignore */
+    }
+}
+
+function renderAboutLanguages(languages) {
+    const root = document.getElementById('about-language-list');
+    if (!root) return;
+
+    if (!languages.length) {
+        root.innerHTML = '<p class="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-mystic-300 sm:col-span-2">No languages added.</p>';
+        return;
+    }
+
+    root.innerHTML = languages
+        .map(
+            (item) => `
+                <div class="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-mystic-200">
+                    <p class="font-medium text-mystic-100">${escapeHtml(item.name)}</p>
+                    <p class="mt-1 text-xs text-mystic-400">Speaking ${item.speaking}% · Written ${item.writing}%</p>
+                </div>
+            `,
+        )
+        .join('');
+}
+
+function renderAboutSkills(skills) {
+    const root = document.getElementById('about-skills-list');
+    if (!root) return;
+
+    if (!skills.length) {
+        root.innerHTML = '<p class="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-mystic-300">No skills added.</p>';
+        return;
+    }
+
+    root.innerHTML = skills
+        .map(
+            (item) => `
+                <span class="inline-flex items-center gap-2 rounded-xl border border-purple-500/25 bg-purple-500/10 px-4 py-2 text-sm text-mystic-100">
+                    <span>${escapeHtml(item.name)}</span>
+                    <span class="text-xs text-mystic-300">${item.percentage}%</span>
+                </span>
+            `,
+        )
+        .join('');
+}
+
+function renderAboutCv(data) {
+    const link = document.getElementById('about-cv-download');
+    const note = document.getElementById('about-cv-note');
+    if (!link) return;
+
+    if (!link.dataset.defaultHref) {
+        link.dataset.defaultHref = link.getAttribute('href') || '#';
+    }
+
+    if (data.cvDataUrl) {
+        link.href = data.cvDataUrl;
+        link.setAttribute('download', data.cvFileName || 'cv-file');
+        if (note) note.textContent = `Current CV: ${data.cvFileName || 'uploaded file'}`;
+        return;
+    }
+
+    link.href = link.dataset.defaultHref;
+    link.setAttribute('download', '');
+    if (note) note.textContent = 'Add your CV file at public/cv.pdf';
+}
+
+function renderAboutProfileImages(profileImages) {
+    const stage = document.getElementById('about-profile-picture-stage');
+    if (!stage) {
+        if (aboutImageRotateInterval) {
+            clearInterval(aboutImageRotateInterval);
+            aboutImageRotateInterval = null;
+        }
+        return;
+    }
+
+    if (aboutImageRotateInterval) {
+        clearInterval(aboutImageRotateInterval);
+        aboutImageRotateInterval = null;
+    }
+
+    if (!profileImages.length) {
+        stage.innerHTML = '<div class="flex min-h-[24rem] items-center justify-center p-6 text-center text-mystic-400">No profile image uploaded.</div>';
+        return;
+    }
+
+    let idx = 0;
+    stage.innerHTML = `<img src="${escapeHtml(profileImages[idx])}" alt="Profile picture" class="h-full min-h-[24rem] w-full object-cover">`;
+
+    if (profileImages.length > 1) {
+        aboutImageRotateInterval = setInterval(() => {
+            idx = (idx + 1) % profileImages.length;
+            const image = stage.querySelector('img');
+            if (image) image.src = profileImages[idx];
+        }, 500);
+    }
+}
+
+function renderAboutEditorLists(data) {
+    const languageEditorRoot = document.getElementById('about-language-editor-list');
+    const skillEditorRoot = document.getElementById('about-skill-editor-list');
+
+    if (languageEditorRoot) {
+        languageEditorRoot.innerHTML = data.languages.length
+            ? data.languages
+                  .map(
+                      (item, index) => `
+                        <div class="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-mystic-200">
+                            <span>${escapeHtml(item.name)} (S ${item.speaking}% / W ${item.writing}%)</span>
+                            <button type="button" class="event-card__button event-card__button--danger" data-about-remove-language="${index}">Remove</button>
+                        </div>
+                    `,
+                  )
+                  .join('')
+            : '<p class="text-xs text-mystic-400">No languages added.</p>';
+    }
+
+    if (skillEditorRoot) {
+        skillEditorRoot.innerHTML = data.skills.length
+            ? data.skills
+                  .map(
+                      (item, index) => `
+                        <div class="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-mystic-200">
+                            <span>${escapeHtml(item.name)} (${item.percentage}%)</span>
+                            <button type="button" class="event-card__button event-card__button--danger" data-about-remove-skill="${index}">Remove</button>
+                        </div>
+                    `,
+                  )
+                  .join('')
+            : '<p class="text-xs text-mystic-400">No skills added.</p>';
+    }
+}
+
+function renderAboutSection(data) {
+    renderAboutProfileImages(data.profileImages);
+    renderAboutCv(data);
+    renderAboutLanguages(data.languages);
+    renderAboutSkills(data.skills);
+    renderAboutEditorLists(data);
+}
+
+function initAboutEditor() {
+    const data = loadAboutData();
+    renderAboutSection(data);
+
+    const editor = document.getElementById('about-editor');
+    if (!editor) return;
+
+    const imageInput = document.getElementById('about-profile-images');
+    const clearImagesBtn = document.getElementById('about-clear-images');
+    const cvInput = document.getElementById('about-cv-file');
+    const cvFileName = document.getElementById('about-cv-file-name');
+
+    const languageName = document.getElementById('about-language-name');
+    const languageSpeaking = document.getElementById('about-language-speaking');
+    const languageWriting = document.getElementById('about-language-writing');
+    const addLanguageBtn = document.getElementById('about-add-language');
+
+    const skillName = document.getElementById('about-skill-name');
+    const skillPercent = document.getElementById('about-skill-percent');
+    const addSkillBtn = document.getElementById('about-add-skill');
+
+    if (imageInput) {
+        imageInput.addEventListener('change', async (e) => {
+            const files = e.target.files ? Array.from(e.target.files) : [];
+            if (!files.length) return;
+
+            const uploaded = await Promise.all(files.map((file) => readImageFileAsDataUrl(file)));
+            const valid = uploaded.filter(Boolean);
+            if (!valid.length) return;
+
+            data.profileImages = [...data.profileImages, ...valid];
+            saveAboutData(data);
+            renderAboutSection(data);
+            imageInput.value = '';
+        });
+    }
+
+    if (clearImagesBtn) {
+        clearImagesBtn.addEventListener('click', () => {
+            data.profileImages = [];
+            saveAboutData(data);
+            renderAboutSection(data);
+        });
+    }
+
+    if (cvInput) {
+        cvInput.addEventListener('change', async (e) => {
+            const file = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+            if (!file) return;
+
+            const encoded = await readFileAsDataUrl(file);
+            if (!encoded) return;
+
+            data.cvDataUrl = encoded;
+            data.cvFileName = file.name || 'cv-file';
+            saveAboutData(data);
+            renderAboutSection(data);
+            if (cvFileName) cvFileName.textContent = data.cvFileName;
+        });
+    }
+
+    if (addLanguageBtn && languageName && languageSpeaking && languageWriting) {
+        addLanguageBtn.addEventListener('click', () => {
+            const name = languageName.value.trim();
+            if (!name) return;
+
+            data.languages.push({
+                name,
+                speaking: clampPercent(languageSpeaking.value),
+                writing: clampPercent(languageWriting.value),
+            });
+            saveAboutData(data);
+            renderAboutSection(data);
+            languageName.value = '';
+            languageSpeaking.value = '';
+            languageWriting.value = '';
+        });
+    }
+
+    if (addSkillBtn && skillName && skillPercent) {
+        addSkillBtn.addEventListener('click', () => {
+            const name = skillName.value.trim();
+            if (!name) return;
+
+            data.skills.push({
+                name,
+                percentage: clampPercent(skillPercent.value),
+            });
+            saveAboutData(data);
+            renderAboutSection(data);
+            skillName.value = '';
+            skillPercent.value = '';
+        });
+    }
+
+    editor.addEventListener('click', (e) => {
+        const removeLanguageBtn = e.target.closest('[data-about-remove-language]');
+        if (removeLanguageBtn) {
+            const index = Number(removeLanguageBtn.getAttribute('data-about-remove-language'));
+            if (!Number.isNaN(index)) {
+                data.languages.splice(index, 1);
+                saveAboutData(data);
+                renderAboutSection(data);
+            }
+            return;
+        }
+
+        const removeSkillBtn = e.target.closest('[data-about-remove-skill]');
+        if (removeSkillBtn) {
+            const index = Number(removeSkillBtn.getAttribute('data-about-remove-skill'));
+            if (!Number.isNaN(index)) {
+                data.skills.splice(index, 1);
+                saveAboutData(data);
+                renderAboutSection(data);
+            }
+        }
+    });
+
+    if (cvFileName) {
+        cvFileName.textContent = data.cvFileName || 'No file selected';
+    }
+}
+
+function normalizeDateInput(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+
+    const slashMatch = raw.match(/^(\d{2})\/(\d{2})\/(\d{2}|\d{4})$/);
+    if (slashMatch) {
+        const day = Number(slashMatch[1]);
+        const month = Number(slashMatch[2]);
+        const yearPart = slashMatch[3];
+        const fullYear = yearPart.length === 2 ? 2000 + Number(yearPart) : Number(yearPart);
+
+        if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && fullYear >= 1900) {
+            return `${String(fullYear).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        }
+    }
+
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) return '';
+    const year = parsed.getFullYear();
+    const month = String(parsed.getMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function formatDobDisplay(isoDate) {
+    const normalized = normalizeDateInput(isoDate);
+    if (!normalized) return String(isoDate || '').trim() || 'Not set';
+
+    const [year, month, day] = normalized.split('-');
+    return `${day}/${month}/${year.slice(-2)}`;
+}
+
+function initAboutDobPicker() {
+    const dobDisplay = document.getElementById('about-profile-dob');
+    const dobPicker = document.getElementById('about-profile-dob-picker');
+    if (!dobDisplay || !dobPicker) return;
+
+    const initialNormalized = normalizeDateInput(dobDisplay.textContent || '');
+    if (initialNormalized) {
+        dobDisplay.textContent = formatDobDisplay(initialNormalized);
+    }
+
+    dobDisplay.addEventListener('dblclick', () => {
+        if (!editingMode) return;
+
+        const normalized = normalizeDateInput(dobDisplay.textContent || '');
+        if (normalized) dobPicker.value = normalized;
+
+        if (typeof dobPicker.showPicker === 'function') {
+            dobPicker.showPicker();
+        } else {
+            dobPicker.click();
+        }
+    });
+
+    dobPicker.addEventListener('change', () => {
+        if (!dobPicker.value) return;
+        dobDisplay.textContent = formatDobDisplay(dobPicker.value);
+        collectEditsFromDom();
+    });
+}
+
 function applyStoredEdits() {
     const data = loadStoredEdits();
     document.querySelectorAll('[data-editable-id]').forEach((el) => {
@@ -589,6 +1022,14 @@ function setEditingMode(on) {
     });
 
     document.querySelectorAll('[data-editable-id]').forEach((el) => {
+        if (el.id === 'about-profile-dob') {
+            if (on) {
+                el.removeAttribute('contenteditable');
+                el.removeAttribute('spellcheck');
+            }
+            return;
+        }
+
         if (on) {
             el.setAttribute('contenteditable', 'true');
             el.setAttribute('spellcheck', 'true');
@@ -669,4 +1110,7 @@ document.addEventListener(
 applyStoredEdits();
 renderEvents();
 initCarousel();
+initOtherEventsToggle();
 initEventCrud();
+initAboutEditor();
+initAboutDobPicker();

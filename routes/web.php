@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 Route::view('/', 'pages.home')->name('home');
 Route::view('/about', 'pages.about')->name('about');
 Route::view('/project', 'pages.project')->name('project');
+Route::view('/events', 'pages.events')->name('events');
 
 Route::redirect('/credential', '/credential/education');
 

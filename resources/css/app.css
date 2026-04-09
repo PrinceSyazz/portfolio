@@ -6,9 +6,9 @@
 @source '../**/*.js';
 
 @theme {
-    --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    --font-sans: 'Nunito', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
-    --font-display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Quicksand', ui-sans-serif, system-ui, sans-serif;
 
     --color-mystic-50: oklch(97% 0.02 300);
     --color-mystic-100: oklch(92% 0.04 300);
@@ -283,7 +283,7 @@
 
     .featured-carousel {
         @apply relative w-full;
-        min-height: 500px;
+        min-height: 560px;
     }
 
     .featured-carousel__arrow {
@@ -308,6 +308,14 @@
     .featured-carousel-item--active {
         opacity: 1;
         pointer-events: auto;
+    }
+
+    .event-card--empty {
+        min-height: 560px;
+    }
+
+    .event-card--empty .event-card__media {
+        min-height: 310px;
     }
 
     .event-list-item {

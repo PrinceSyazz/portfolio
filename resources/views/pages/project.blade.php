@@ -5,11 +5,8 @@
 @section('content')
     <div class="px-5 py-12 md:px-8 md:py-16">
         <div class="mx-auto max-w-6xl">
-            <h1 class="font-display text-3xl font-semibold text-mystic-50 md:text-4xl" data-reveal data-editable-id="work-title">All Events</h1>
-            <p class="mt-3 max-w-xl text-mystic-400" data-reveal data-editable-id="work-sub">Browse all the events I've participated in recently.</p>
-            <div id="all-events-list" class="mt-12 space-y-6">
-            </div>
-            @if (false)
+            <h1 class="font-display text-3xl font-semibold text-mystic-50 md:text-4xl" data-reveal data-editable-id="work-title">Project</h1>
+            <p class="mt-3 max-w-xl text-mystic-400" data-reveal data-editable-id="work-sub">Selected work—replace with your own projects.</p>
             <div class="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                 @foreach ([
                     ['title' => 'Ethereal dashboard', 'desc' => 'Analytics UI with glass panels and soft purple telemetry.', 'tag' => 'UI'],
@@ -29,7 +26,6 @@
                     </article>
                 @endforeach
             </div>
-            @endif
         </div>
     </div>
 @endsection

@@ -30,13 +30,24 @@
 
             <p class="mt-10 text-center" data-reveal>
                 <a
-                    href="{{ route('project') }}"
+                    href="#other-events"
+                    id="view-other-events-trigger"
                     class="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-6 py-2.5 text-sm font-medium text-mystic-100 transition hover:border-purple-400/45 hover:bg-white/10"
                     data-editable-id="events-view-other-link-text"
                 >
                     View other events
                 </a>
             </p>
+
+            <div id="other-events" class="mt-20 scroll-mt-36" data-reveal hidden aria-hidden="true">
+                <div class="flex flex-wrap items-end justify-between gap-4">
+                    <div>
+                        <h3 class="font-display text-2xl font-semibold text-mystic-50 md:text-3xl" data-editable-id="events-other-title">Other Events</h3>
+                        <p class="mt-2 max-w-2xl text-mystic-300" data-editable-id="events-other-subtitle">A breakdown of non-featured events listed below.</p>
+                    </div>
+                </div>
+                <div id="all-events-list" class="mt-8 space-y-6"></div>
+            </div>
 
             <div id="events-editor" class="events-editor mt-16" data-editing-only hidden>
                 <h3 class="font-display text-2xl font-semibold text-mystic-50">Events CRUD</h3>

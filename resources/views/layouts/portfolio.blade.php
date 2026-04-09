@@ -12,7 +12,7 @@
         <title>@yield('title', 'Home') — {{ config('app.name', 'Portfolio') }}</title>
 
         <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=manrope:400,500,600,700|space-grotesk:400,500,600,700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.bunny.net/css?family=nunito:300,400,500,600,700,800|quicksand:400,500,600,700&display=swap" rel="stylesheet" />
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
