@@ -6,23 +6,17 @@ const LOADER_GREETINGS = [
     { lang: 'ar', label: 'Arabic', text: 'السلام عليكم' },
     { lang: 'es', label: 'Spanish', text: 'Hola' },
     { lang: 'fr', label: 'French', text: 'Bonjour' },
-    { lang: 'de', label: 'German', text: 'Hallo' },
-    { lang: 'it', label: 'Italian', text: 'Ciao' },
-    { lang: 'pt', label: 'Portuguese', text: 'Olá' },
     { lang: 'ja', label: 'Japanese', text: 'こんにちは' },
     { lang: 'ko', label: 'Korean', text: '안녕하세요' },
     { lang: 'zh-CN', label: 'Chinese', text: '你好' },
-    { lang: 'ms', label: 'Malay', text: 'Apa khabar' },
     { lang: 'th', label: 'Thai', text: 'สวัสดี' },
-    { lang: 'hi', label: 'Hindi', text: 'नमस्ते' },
-    { lang: 'ru', label: 'Russian', text: 'Привет' },
-    { lang: 'tl', label: 'Tagalog', text: 'Kumusta' },
-    { lang: 'el', label: 'Greek', text: 'Γεια σας' },
+    { lang: 'tl', label: 'Filipino', text: 'Kumusta' },
+    { lang: 'ms', label: 'Malay', text: 'Apa khabar' },
     { lang: 'en', label: 'English', text: 'Hello' },
 ];
 
-const LOADER_HELLO_INTERVAL_MS = 300;
-const LOADER_MIN_MS = Math.max(2600, LOADER_HELLO_INTERVAL_MS * (LOADER_GREETINGS.length - 1) + 300);
+const LOADER_HELLO_INTERVAL_MS = 220;
+const LOADER_MIN_MS = Math.max(1500, LOADER_HELLO_INTERVAL_MS * (LOADER_GREETINGS.length - 1) + 180);
 const LOADER_FIRST_VISIT_KEY = 'portfolio-loader-first-visit-done';
 const LOADER_START_LANG = 'ar';
 
@@ -93,7 +87,7 @@ function hideLoader() {
     window.setTimeout(() => {
         loader.remove();
         document.body.classList.remove('overflow-hidden');
-    }, 650);
+    }, 420);
 }
 
 function applyLoaderGreeting(index) {
