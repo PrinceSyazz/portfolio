@@ -18,17 +18,23 @@
     </head>
     @php
         $onCredential = request()->routeIs('credential.*');
+        $showLoader = request()->routeIs('home');
     @endphp
-    <body class="min-h-full overflow-hidden bg-mystic-950 font-sans text-mystic-100 antialiased">
-        <div id="loader" class="loader" role="status" aria-live="polite" aria-busy="true">
-            <div class="loader__content">
-                <p class="loader__hello font-display" lang="ar">
-                    <span id="loader-hello" class="loader__hello-word" dir="rtl">السلام عليكم</span>
-                </p>
-                <p id="loader-hello-label" class="loader__hello-label">العربية</p>
-                <div class="loader__line" aria-hidden="true"></div>
+    <body @class([
+        'min-h-full bg-mystic-950 font-sans text-mystic-100 antialiased',
+        'overflow-hidden' => $showLoader,
+    ])>
+        @if ($showLoader)
+            <div id="loader" class="loader" role="status" aria-live="polite" aria-busy="true">
+                <div class="loader__content">
+                    <p class="loader__hello font-display" lang="ar">
+                        <span id="loader-hello" class="loader__hello-word" dir="rtl">السلام عليكم</span>
+                    </p>
+                    <p id="loader-hello-label" class="loader__hello-label">العربية</p>
+                    <div class="loader__line" aria-hidden="true"></div>
+                </div>
             </div>
-        </div>
+        @endif
 
         <div class="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
             <div class="absolute -left-1/4 top-0 h-[70vh] w-[70vw] rounded-full bg-purple-600/25 blur-[120px] animate-smoke-a" aria-hidden="true"></div>

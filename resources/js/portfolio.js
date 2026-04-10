@@ -15,8 +15,8 @@ const LOADER_GREETINGS = [
     { lang: 'en', label: 'English', text: 'Hello' },
 ];
 
-const LOADER_HELLO_INTERVAL_MS = 220;
-const LOADER_MIN_MS = Math.max(1500, LOADER_HELLO_INTERVAL_MS * (LOADER_GREETINGS.length - 1) + 180);
+const LOADER_HELLO_INTERVAL_MS = 140;
+const LOADER_MIN_MS = Math.max(900, LOADER_HELLO_INTERVAL_MS * (LOADER_GREETINGS.length - 1) + 120);
 const LOADER_FIRST_VISIT_KEY = 'portfolio-loader-first-visit-done';
 const LOADER_START_LANG = 'ar';
 
@@ -55,9 +55,7 @@ function isFirstVisit() {
 
 /** Show intro only on first-ever visit, or when user refreshes Home page. */
 function shouldPlayIntroLoader() {
-    if (import.meta.env.DEV) {
-        return true;
-    }
+    if (!isHomePath()) return false;
 
     const navType = getNavigationType();
     if (isFirstVisit()) {
@@ -87,7 +85,7 @@ function hideLoader() {
     window.setTimeout(() => {
         loader.remove();
         document.body.classList.remove('overflow-hidden');
-    }, 420);
+    }, 240);
 }
 
 function applyLoaderGreeting(index) {
@@ -145,10 +143,10 @@ function initLoader() {
     startLoaderHelloCycle();
 
     const pageLoaded = new Promise((resolve) => {
-      if (document.readyState === 'complete') {
+        if (document.readyState !== 'loading') {
             resolve();
         } else {
-        window.addEventListener('load', resolve, { once: true });
+            document.addEventListener('DOMContentLoaded', resolve, { once: true });
         }
     });
 

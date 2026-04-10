@@ -177,7 +177,7 @@
     }
 
     .js [data-reveal] {
-        @apply opacity-0 translate-y-6 transition-all duration-700 ease-out;
+        @apply opacity-0 translate-y-3 transition-all duration-300 ease-out;
     }
 
     .js .reveal--visible {

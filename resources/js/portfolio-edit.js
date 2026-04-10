@@ -1,13 +1,17 @@
 const STORAGE_KEY = 'portfolio-edits-v1';
 const EVENTS_KEY = 'portfolio-events-v2';
+const PROJECTS_KEY = 'portfolio-projects-v1';
 const ABOUT_KEY = 'portfolio-about-v1';
 const DEFAULT_EVENTS = [];
+const DEFAULT_PROJECTS = [];
 
 let editingMode = false;
 let periodHeld = false;
 let secretLeftClicks = 0;
 let pendingUploadImageData = '';
 let editingEventImageData = '';
+let pendingProjectImageData = '';
+let editingProjectImageData = '';
 let aboutImageRotateInterval = null;
 
 function getLoaderEl() {
@@ -66,6 +70,39 @@ function saveEvents(events) {
     } catch {
         /* ignore */
     }
+}
+
+function loadProjects() {
+    try {
+        const raw = localStorage.getItem(PROJECTS_KEY);
+        if (!raw) return DEFAULT_PROJECTS.slice();
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return DEFAULT_PROJECTS.slice();
+        return parsed
+            .map((item) => ({
+                id: typeof item.id === 'string' ? item.id : `proj-${Date.now()}`,
+                title: String(item.title || '').trim(),
+                description: String(item.description || '').trim(),
+                link: String(item.link || '').trim(),
+                image: String(item.image || '').trim(),
+                createdAt: String(item.createdAt || new Date().toISOString()),
+            }))
+            .filter((item) => item.title.length > 0);
+    } catch {
+        return DEFAULT_PROJECTS.slice();
+    }
+}
+
+function saveProjects(projects) {
+    try {
+        localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+    } catch {
+        /* ignore */
+    }
+}
+
+function sortProjectsNewest(projects) {
+    return [...projects].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 function sortEventsNewest(events) {
@@ -235,6 +272,44 @@ function renderEventListItem(event) {
     `;
 }
 
+function renderProjectCard(project) {
+    const safeTitle = escapeHtml(project.title || 'Untitled project');
+    const safeDesc = escapeHtml(project.description || 'No description yet.');
+    const safeDomain = escapeHtml(extractDomain(project.link || ''));
+    const safeLink = project.link && /^https?:\/\//i.test(project.link) ? project.link : '';
+    const safeLinkAttr = escapeHtml(safeLink);
+    const safeCreatedAt = escapeHtml(formatEventDate(project.createdAt || ''));
+
+    const mediaCandidate = project.image || previewImageFromLink(project.link);
+    const mediaMarkup = mediaCandidate
+        ? `<img src="${escapeHtml(mediaCandidate)}" alt="${safeTitle} preview" loading="lazy" onerror="this.remove(); this.parentElement.insertAdjacentHTML('beforeend','<div class=\"event-card__fallback\"><p class=\"event-card__domain\">${safeDomain}</p><p class=\"mt-2 text-sm text-mystic-200\">Link preview</p></div>');">`
+        : `<div class="event-card__fallback"><p class="event-card__domain">${safeDomain}</p><p class="mt-2 text-sm text-mystic-200">Link preview</p></div>`;
+
+    return `
+        <article class="event-card" data-project-id="${escapeHtml(project.id)}">
+            <a href="${safeLinkAttr || '#'}" target="_blank" rel="noopener noreferrer" class="event-card__media group block ${safeLink ? '' : 'pointer-events-none'}">
+                ${mediaMarkup}
+                <div class="event-card__fallback pointer-events-none absolute inset-0 flex flex-col justify-end bg-[linear-gradient(160deg,rgba(88,28,135,0.18)_0%,rgba(24,16,44,0.68)_60%,rgba(10,6,18,0.88)_100%)] p-5">
+                    <p class="event-card__domain">Project preview</p>
+                    <p class="mt-2 text-sm text-mystic-200">${safeDomain || 'Open project website'}</p>
+                </div>
+            </a>
+            <div class="event-card__body">
+                <p class="event-card__meta">${safeCreatedAt}</p>
+                <h3 class="event-card__title">${safeTitle}</h3>
+                <p class="event-card__description">${safeDesc}</p>
+                <div class="event-card__links">
+                    ${safeLink ? `<a href="${safeLinkAttr}" target="_blank" rel="noopener noreferrer" class="event-card__view-link">View project</a>` : '<span class="event-card__view-link">No link</span>'}
+                    <div class="event-card__controls">
+                        <button type="button" class="event-card__button" data-project-action="edit">Edit</button>
+                        <button type="button" class="event-card__button event-card__button--danger" data-project-action="delete">Delete</button>
+                    </div>
+                </div>
+            </div>
+        </article>
+    `;
+}
+
 function updateCarouselDisplay() {
     const carousel = document.getElementById('featured-events-list');
     if (!carousel) return;
@@ -262,7 +337,7 @@ function startCarouselAutoRotate() {
         clearInterval(carouselState.autoRotateInterval);
     }
     if (carouselState.events.length <= 1) return;
-    carouselState.autoRotateInterval = setInterval(carouselNext, 500);
+    carouselState.autoRotateInterval = setInterval(carouselNext, 4000);
 }
 
 function stopCarouselAutoRotate() {
@@ -349,6 +424,167 @@ function renderAllEventsList() {
 function renderEvents() {
     renderFeaturedCarousel();
     renderAllEventsList();
+}
+
+function getProjectFormEls() {
+    return {
+        form: document.getElementById('project-form'),
+        id: document.getElementById('project-id'),
+        title: document.getElementById('project-title'),
+        description: document.getElementById('project-description'),
+        link: document.getElementById('project-link'),
+        imageFile: document.getElementById('project-image-file'),
+        imageDropzone: document.getElementById('project-image-dropzone'),
+        imageName: document.getElementById('project-image-name'),
+        save: document.getElementById('project-save'),
+        reset: document.getElementById('project-reset'),
+    };
+}
+
+function setProjectImageNameLabel(text) {
+    const els = getProjectFormEls();
+    if (!els.imageName) return;
+    els.imageName.textContent = text || 'No file selected';
+}
+
+function resetProjectForm() {
+    const els = getProjectFormEls();
+    if (!els.form) return;
+    els.form.reset();
+    els.id.value = '';
+    pendingProjectImageData = '';
+    editingProjectImageData = '';
+    if (els.imageFile) els.imageFile.value = '';
+    setProjectImageNameLabel('No file selected');
+    if (els.save) els.save.textContent = 'Create Project';
+}
+
+function fillProjectForm(project) {
+    const els = getProjectFormEls();
+    if (!els.form) return;
+    els.id.value = project.id || '';
+    els.title.value = project.title || '';
+    els.description.value = project.description || '';
+    els.link.value = project.link || '';
+    pendingProjectImageData = '';
+    editingProjectImageData = project.image || '';
+    if (els.imageFile) els.imageFile.value = '';
+    setProjectImageNameLabel(editingProjectImageData ? 'Current image attached (drop/click to replace)' : 'No file selected');
+    if (els.save) els.save.textContent = 'Update Project';
+    els.title.focus();
+}
+
+function upsertProjectFromForm() {
+    const els = getProjectFormEls();
+    if (!els.form || !els.title || !els.description) return;
+
+    const title = els.title.value.trim();
+    if (!title) return;
+
+    const projects = loadProjects();
+    const id = els.id.value.trim();
+    const nowIso = new Date().toISOString();
+
+    const payload = {
+        id: id || `proj-${Date.now()}`,
+        title,
+        description: (els.description.value || '').trim(),
+        link: (els.link.value || '').trim(),
+        image: pendingProjectImageData || editingProjectImageData || '',
+        createdAt: nowIso,
+    };
+
+    const existingIndex = projects.findIndex((project) => project.id === payload.id);
+    if (existingIndex >= 0) {
+        payload.createdAt = projects[existingIndex].createdAt || nowIso;
+        projects[existingIndex] = payload;
+    } else {
+        projects.push(payload);
+    }
+
+    saveProjects(projects);
+    renderProjects();
+    resetProjectForm();
+}
+
+function deleteProjectById(id) {
+    if (!id) return;
+    const projects = loadProjects();
+    const next = projects.filter((project) => project.id !== id);
+    saveProjects(next);
+    renderProjects();
+    const els = getProjectFormEls();
+    if (els.id && els.id.value === id) {
+        resetProjectForm();
+    }
+}
+
+function renderProjects() {
+    const listRoot = document.getElementById('projects-list');
+    if (!listRoot) return;
+
+    const sorted = sortProjectsNewest(loadProjects());
+    listRoot.innerHTML = sorted.length
+        ? sorted.map((project) => renderProjectCard(project)).join('')
+        : '<p class="glass-panel p-6 text-mystic-300 text-center py-12">No projects yet.</p>';
+}
+
+function initProjectCrud() {
+    const els = getProjectFormEls();
+    const listRoot = document.getElementById('projects-list');
+
+    if (els.form) {
+        els.form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            upsertProjectFromForm();
+        });
+    }
+
+    if (els.reset) {
+        els.reset.addEventListener('click', () => {
+            resetProjectForm();
+        });
+    }
+
+    if (els.imageFile) {
+        els.imageFile.addEventListener('change', async (e) => {
+            const file = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+            pendingProjectImageData = await readImageFileAsDataUrl(file);
+            if (pendingProjectImageData) {
+                setProjectImageNameLabel(file ? file.name : 'Image selected');
+            } else {
+                setProjectImageNameLabel('No file selected');
+            }
+        });
+    }
+
+    if (els.imageDropzone && els.imageFile) {
+        els.imageDropzone.addEventListener('click', () => {
+            els.imageFile.click();
+        });
+    }
+
+    if (listRoot) {
+        listRoot.addEventListener('click', (e) => {
+            const button = e.target && e.target.closest ? e.target.closest('[data-project-action]') : null;
+            if (!button) return;
+
+            const card = button.closest('[data-project-id]');
+            if (!card) return;
+
+            const id = card.getAttribute('data-project-id');
+            const action = button.getAttribute('data-project-action');
+            const projects = loadProjects();
+            const project = projects.find((item) => item.id === id);
+            if (!project) return;
+
+            if (action === 'edit') {
+                fillProjectForm(project);
+            } else if (action === 'delete') {
+                deleteProjectById(id);
+            }
+        });
+    }
 }
 
 function initOtherEventsToggle() {
@@ -1109,8 +1345,10 @@ document.addEventListener(
 
 applyStoredEdits();
 renderEvents();
+renderProjects();
 initCarousel();
 initOtherEventsToggle();
 initEventCrud();
+initProjectCrud();
 initAboutEditor();
 initAboutDobPicker();
