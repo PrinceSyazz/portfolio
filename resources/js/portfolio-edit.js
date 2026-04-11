@@ -24,6 +24,14 @@ let editingProjectImageData = '';
 let pendingCommentReply = '';
 let aboutImageRotateInterval = null;
 
+function confirmDeleteAction() {
+    return window.confirm('Are you sure you wanna delete this?');
+}
+
+function confirmChangeAction() {
+    return window.confirm('Are you sure you wanna make this changes?');
+}
+
 function getLoaderEl() {
     return document.getElementById('loader');
 }
@@ -345,6 +353,7 @@ function updateCommentById(id, updater) {
 
 function deleteCommentById(id) {
     if (!id) return;
+    if (!confirmDeleteAction()) return;
     const next = loadComments().filter((item) => item.id !== id);
     saveComments(next);
     renderComments();
@@ -413,6 +422,7 @@ function initComments() {
         const replyInput = replyForm.querySelector('[data-comment-reply-input]');
         const reply = String(replyInput?.value || '').trim();
         if (!reply) return;
+        if (!confirmChangeAction()) return;
 
         updateCommentById(id, (comment) => ({ reply }));
     });
@@ -450,6 +460,7 @@ function resetContactForm() {
 function saveContactFromForm() {
     const els = getContactFormEls();
     if (!els.form) return;
+    if (!confirmChangeAction()) return;
 
     const payload = {
         whatsappNumber: String(els.whatsappNumber?.value || '').trim(),
@@ -476,6 +487,7 @@ function initContactEditor() {
 
     if (els.reset) {
         els.reset.addEventListener('click', () => {
+            if (!confirmDeleteAction()) return;
             saveContactLinks({ ...DEFAULT_CONTACT });
             resetContactForm();
             renderContactLinks();
@@ -859,6 +871,7 @@ function fillProjectForm(project) {
 function upsertProjectFromForm() {
     const els = getProjectFormEls();
     if (!els.form || !els.title || !els.description) return;
+    if (!confirmChangeAction()) return;
 
     const title = els.title.value.trim();
     if (!title) return;
@@ -891,6 +904,7 @@ function upsertProjectFromForm() {
 
 function deleteProjectById(id) {
     if (!id) return;
+    if (!confirmDeleteAction()) return;
     const projects = loadProjects();
     const next = projects.filter((project) => project.id !== id);
     saveProjects(next);
@@ -924,6 +938,7 @@ function initProjectCrud() {
 
     if (els.reset) {
         els.reset.addEventListener('click', () => {
+            if (!confirmChangeAction()) return;
             resetProjectForm();
         });
     }
@@ -1035,6 +1050,7 @@ function fillEventForm(event) {
 function upsertEventFromForm() {
     const els = getEventFormEls();
     if (!els.form || !els.title || !els.eventDate) return;
+    if (!confirmChangeAction()) return;
 
     const title = els.title.value.trim();
     const eventDate = els.eventDate.value;
@@ -1070,6 +1086,7 @@ function upsertEventFromForm() {
 
 function deleteEventById(id) {
     if (!id) return;
+    if (!confirmDeleteAction()) return;
     const events = loadEvents();
     const next = events.filter((event) => event.id !== id);
     saveEvents(next);
@@ -1108,6 +1125,7 @@ function initEventCrud() {
 
     if (els.reset) {
         els.reset.addEventListener('click', () => {
+            if (!confirmChangeAction()) return;
             resetEventForm();
         });
     }
@@ -1411,6 +1429,10 @@ function initAboutEditor() {
 
     if (imageInput) {
         imageInput.addEventListener('change', async (e) => {
+            if (!confirmChangeAction()) {
+                imageInput.value = '';
+                return;
+            }
             const files = e.target.files ? Array.from(e.target.files) : [];
             if (!files.length) return;
 
@@ -1427,6 +1449,7 @@ function initAboutEditor() {
 
     if (clearImagesBtn) {
         clearImagesBtn.addEventListener('click', () => {
+            if (!confirmDeleteAction()) return;
             data.profileImages = [];
             saveAboutData(data);
             renderAboutSection(data);
@@ -1435,6 +1458,10 @@ function initAboutEditor() {
 
     if (cvInput) {
         cvInput.addEventListener('change', async (e) => {
+            if (!confirmChangeAction()) {
+                cvInput.value = '';
+                return;
+            }
             const file = e.target.files && e.target.files[0] ? e.target.files[0] : null;
             if (!file) return;
 
@@ -1451,6 +1478,7 @@ function initAboutEditor() {
 
     if (addLanguageBtn && languageName && languageSpeaking && languageWriting) {
         addLanguageBtn.addEventListener('click', () => {
+            if (!confirmChangeAction()) return;
             const name = languageName.value.trim();
             if (!name) return;
 
@@ -1469,6 +1497,7 @@ function initAboutEditor() {
 
     if (addSkillBtn && skillName && skillPercent) {
         addSkillBtn.addEventListener('click', () => {
+            if (!confirmChangeAction()) return;
             const name = skillName.value.trim();
             if (!name) return;
 
@@ -1488,6 +1517,7 @@ function initAboutEditor() {
         if (removeLanguageBtn) {
             const index = Number(removeLanguageBtn.getAttribute('data-about-remove-language'));
             if (!Number.isNaN(index)) {
+                if (!confirmDeleteAction()) return;
                 data.languages.splice(index, 1);
                 saveAboutData(data);
                 renderAboutSection(data);
@@ -1499,6 +1529,7 @@ function initAboutEditor() {
         if (removeSkillBtn) {
             const index = Number(removeSkillBtn.getAttribute('data-about-remove-skill'));
             if (!Number.isNaN(index)) {
+                if (!confirmDeleteAction()) return;
                 data.skills.splice(index, 1);
                 saveAboutData(data);
                 renderAboutSection(data);
