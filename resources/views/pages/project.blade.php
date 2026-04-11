@@ -10,20 +10,20 @@
             <div id="projects-list" class="mt-12 space-y-6"></div>
 
             <div id="projects-editor" class="events-editor mt-16" data-editing-only hidden>
-                <h3 class="font-display text-2xl font-semibold text-mystic-50">Projects CRUD</h3>
-                <p class="mt-2 text-sm text-mystic-300">Create, edit, and delete projects. The preview image links to the project website.</p>
+                <h3 class="font-display text-2xl font-semibold text-mystic-50">Projects</h3>
+                <p class="mt-2 text-sm text-mystic-300">Add a project title, a short description, and the website link. The preview image will be taken from the link first, and you can upload one only if the preview is weak.</p>
 
                 <form id="project-form" class="mt-6 grid gap-4 md:grid-cols-2">
                     <input type="hidden" id="project-id" name="id">
 
                     <label class="events-editor__field md:col-span-2">
                         <span class="events-editor__label">Title</span>
-                        <input id="project-title" name="title" type="text" required class="events-editor__input" placeholder="Project title">
+                        <input id="project-title" name="title" type="text" required class="events-editor__input events-editor__input--glass" placeholder="Project title">
                     </label>
 
                     <label class="events-editor__field md:col-span-2">
                         <span class="events-editor__label">Description</span>
-                        <textarea id="project-description" name="description" rows="3" class="events-editor__input" placeholder="Short project summary"></textarea>
+                        <textarea id="project-description" name="description" rows="3" class="events-editor__input events-editor__input--glass" placeholder="Short project summary"></textarea>
                     </label>
 
                     <label class="events-editor__field md:col-span-2">
@@ -41,8 +41,8 @@
                     </div>
 
                     <div class="events-editor__actions md:col-span-2">
-                        <button type="submit" id="project-save" class="events-editor__button events-editor__button--primary">Create Project</button>
-                        <button type="button" id="project-reset" class="events-editor__button">Cancel Edit</button>
+                        <button type="submit" id="project-save" class="events-editor__button events-editor__button--primary">Save Project</button>
+                        <button type="button" id="project-reset" class="events-editor__button">Clear</button>
                     </div>
                 </form>
             </div>

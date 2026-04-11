@@ -1,9 +1,18 @@
 const STORAGE_KEY = 'portfolio-edits-v1';
 const EVENTS_KEY = 'portfolio-events-v2';
 const PROJECTS_KEY = 'portfolio-projects-v1';
+const CONTACT_KEY = 'portfolio-contact-v1';
+const COMMENTS_KEY = 'portfolio-comments-v1';
 const ABOUT_KEY = 'portfolio-about-v1';
 const DEFAULT_EVENTS = [];
 const DEFAULT_PROJECTS = [];
+const DEFAULT_CONTACT = {
+    whatsappNumber: '',
+    whatsappLink: '',
+    emailAddress: '',
+    instagramUsername: '',
+    instagramLink: '',
+};
 
 let editingMode = false;
 let periodHeld = false;
@@ -12,6 +21,7 @@ let pendingUploadImageData = '';
 let editingEventImageData = '';
 let pendingProjectImageData = '';
 let editingProjectImageData = '';
+let pendingCommentReply = '';
 let aboutImageRotateInterval = null;
 
 function getLoaderEl() {
@@ -98,6 +108,378 @@ function saveProjects(projects) {
         localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
     } catch {
         /* ignore */
+    }
+}
+
+function loadContactLinks() {
+    try {
+        const raw = localStorage.getItem(CONTACT_KEY);
+        if (!raw) return { ...DEFAULT_CONTACT };
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') return { ...DEFAULT_CONTACT };
+        return {
+            whatsappNumber: String(parsed.whatsappNumber || '').trim(),
+            whatsappLink: String(parsed.whatsappLink || '').trim(),
+            emailAddress: String(parsed.emailAddress || '').trim(),
+            instagramUsername: String(parsed.instagramUsername || '').trim(),
+            instagramLink: String(parsed.instagramLink || '').trim(),
+        };
+    } catch {
+        return { ...DEFAULT_CONTACT };
+    }
+}
+
+function saveContactLinks(contact) {
+    try {
+        localStorage.setItem(CONTACT_KEY, JSON.stringify(contact));
+    } catch {
+        /* ignore */
+    }
+}
+
+function loadComments() {
+    try {
+        const raw = localStorage.getItem(COMMENTS_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        return parsed
+            .map((item) => ({
+                id: typeof item.id === 'string' ? item.id : `cmt-${Date.now()}`,
+                username: String(item.username || '').trim(),
+                body: String(item.body || '').trim(),
+                reply: String(item.reply || '').trim(),
+                likes: Number.isFinite(Number(item.likes)) ? Math.max(0, Number(item.likes)) : 0,
+                liked: Boolean(item.liked),
+                createdAt: String(item.createdAt || new Date().toISOString()),
+                updatedAt: String(item.updatedAt || new Date().toISOString()),
+            }))
+            .filter((item) => item.body.length > 0);
+    } catch {
+        return [];
+    }
+}
+
+function saveComments(comments) {
+    try {
+        localStorage.setItem(COMMENTS_KEY, JSON.stringify(comments));
+    } catch {
+        /* ignore */
+    }
+}
+
+function sortCommentsNewest(comments) {
+    return [...comments].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+function normalizeWhatsAppNumber(value) {
+    return String(value || '').replace(/[^\d]/g, '');
+}
+
+function normalizeInstagramUsername(value) {
+    return String(value || '').trim().replace(/^@+/, '');
+}
+
+function renderContactLinks() {
+    const contact = loadContactLinks();
+
+    const whatsappText = document.getElementById('contact-whatsapp-text');
+    const whatsappLink = document.getElementById('contact-whatsapp-link');
+    const emailText = document.getElementById('contact-email-text');
+    const emailLink = document.getElementById('contact-email-link');
+    const instagramText = document.getElementById('contact-instagram-text');
+    const instagramLink = document.getElementById('contact-instagram-link');
+
+    const whatsappNumber = contact.whatsappNumber;
+    const whatsappHref = contact.whatsappLink || (whatsappNumber ? `https://wa.me/${normalizeWhatsAppNumber(whatsappNumber)}` : '#');
+    const emailAddress = contact.emailAddress;
+    const emailHref = emailAddress ? `mailto:${emailAddress.replace(/^mailto:/i, '')}` : '#';
+    const instagramUsername = normalizeInstagramUsername(contact.instagramUsername);
+    const instagramHref = contact.instagramLink || (instagramUsername ? `https://instagram.com/${instagramUsername}` : '#');
+
+    if (whatsappText) whatsappText.textContent = whatsappNumber || 'Tap to connect';
+    if (whatsappLink) {
+        whatsappLink.href = whatsappHref;
+        whatsappLink.toggleAttribute('aria-disabled', !whatsappNumber && !contact.whatsappLink);
+        whatsappLink.classList.toggle('pointer-events-none', !whatsappNumber && !contact.whatsappLink);
+    }
+
+    if (emailText) emailText.textContent = emailAddress || 'Tap to connect';
+    if (emailLink) {
+        emailLink.href = emailHref;
+        emailLink.toggleAttribute('aria-disabled', !emailAddress);
+        emailLink.classList.toggle('pointer-events-none', !emailAddress);
+    }
+
+    if (instagramText) instagramText.textContent = instagramUsername ? `@${instagramUsername}` : 'Tap to connect';
+    if (instagramLink) {
+        instagramLink.href = instagramHref;
+        instagramLink.toggleAttribute('aria-disabled', !instagramUsername && !contact.instagramLink);
+        instagramLink.classList.toggle('pointer-events-none', !instagramUsername && !contact.instagramLink);
+    }
+}
+
+function getCommentFormEls() {
+    return {
+        form: document.getElementById('comment-form'),
+        username: document.getElementById('comment-username'),
+        body: document.getElementById('comment-body'),
+        submit: document.getElementById('comment-submit'),
+        list: document.getElementById('comment-list'),
+        count: document.getElementById('comment-count'),
+    };
+}
+
+function escapeComment(text) {
+    return escapeHtml(text).replace(/\n/g, '<br>');
+}
+
+function renderCommentCard(comment) {
+    const safeUsername = escapeHtml(comment.username || 'Anonymous');
+    const safeBody = escapeComment(comment.body || '');
+    const safeReply = escapeComment(comment.reply || '');
+    const timeLabel = escapeHtml(formatUploadDateTime(comment.createdAt || ''));
+    const replyTime = comment.updatedAt && comment.reply ? escapeHtml(formatUploadDateTime(comment.updatedAt)) : '';
+    const likeCount = Number.isFinite(Number(comment.likes)) ? Math.max(0, Number(comment.likes)) : 0;
+
+    return `
+        <article class="comment-card glass-panel p-5 md:p-6" data-comment-id="${escapeHtml(comment.id)}">
+            <div>
+                <p class="text-sm font-semibold text-mystic-100">@${safeUsername} <span class="text-mystic-500">· ${timeLabel}</span></p>
+            </div>
+            <div class="mt-4 relative pr-10">
+                <p class="whitespace-pre-wrap text-sm leading-relaxed text-mystic-200" data-comment-body>${safeBody}</p>
+                <button
+                    type="button"
+                    class="absolute bottom-0 right-0 inline-flex min-w-9 items-center gap-1 rounded-lg px-2 py-1 text-xs transition ${comment.liked ? 'text-rose-300' : 'text-mystic-400'}"
+                    data-comment-action="toggle-like"
+                    aria-label="${comment.liked ? 'Unlike comment' : 'Like comment'}"
+                >
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M12 21.35 10.55 20.03C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09A6.02 6.02 0 0 1 16.5 3C19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54z" />
+                    </svg>
+                    <span class="leading-none">${likeCount}</span>
+                </button>
+            </div>
+
+            <div class="mt-5 space-y-3">
+                <div class="comment-reply ${comment.reply ? '' : 'hidden'}" data-comment-reply-wrap>
+                    <p class="text-xs uppercase tracking-[0.2em] text-purple-300/80">Reply</p>
+                    <p class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-mystic-300" data-comment-reply>${safeReply}</p>
+                    <p class="mt-2 text-xs text-mystic-500 ${comment.reply ? '' : 'hidden'}" data-comment-reply-time>${replyTime}</p>
+                </div>
+
+                <div class="comment-actions flex flex-wrap gap-2 ${editingMode ? '' : 'hidden'}" data-comment-actions>
+                    <button type="button" class="events-editor__button" data-comment-action="reply">Reply</button>
+                    <button type="button" class="events-editor__button event-card__button--danger" data-comment-action="delete">Delete</button>
+                </div>
+
+                <form class="comment-reply-form space-y-3 ${editingMode ? '' : 'hidden'}" data-comment-reply-form>
+                    <label class="events-editor__field">
+                        <span class="events-editor__label">Admin Reply</span>
+                        <textarea class="events-editor__input" rows="3" data-comment-reply-input placeholder="Write a reply as admin..."></textarea>
+                    </label>
+                    <div class="events-editor__actions">
+                        <button type="submit" class="events-editor__button events-editor__button--primary">Save Reply</button>
+                        <button type="button" class="events-editor__button" data-comment-action="cancel-reply">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </article>
+    `;
+}
+
+function renderComments() {
+    const els = getCommentFormEls();
+    if (!els.list) return;
+
+    const comments = sortCommentsNewest(loadComments());
+    els.list.innerHTML = comments.length
+        ? comments.map((comment) => renderCommentCard(comment)).join('')
+        : '<div class="glass-panel p-6 text-center text-sm text-mystic-300">No comments yet. Be the first to leave one.</div>';
+
+    if (els.count) {
+        els.count.textContent = `${comments.length} comment${comments.length === 1 ? '' : 's'}`;
+    }
+}
+
+function addCommentFromForm() {
+    const els = getCommentFormEls();
+    if (!els.form || !els.body) return;
+
+    const body = els.body.value.trim();
+    if (!body) return;
+
+    const comments = loadComments();
+    comments.push({
+        id: `cmt-${Date.now()}`,
+        username: String(els.username?.value || '').trim(),
+        body,
+        reply: '',
+        likes: 0,
+        liked: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    });
+
+    saveComments(comments);
+    renderComments();
+    els.body.value = '';
+}
+
+function updateCommentById(id, updater) {
+    if (!id) return;
+    const comments = loadComments();
+    const index = comments.findIndex((item) => item.id === id);
+    if (index < 0) return;
+
+    const next = updater({ ...comments[index] });
+    comments[index] = {
+        ...comments[index],
+        ...next,
+        updatedAt: new Date().toISOString(),
+    };
+    saveComments(comments);
+    renderComments();
+}
+
+function deleteCommentById(id) {
+    if (!id) return;
+    const next = loadComments().filter((item) => item.id !== id);
+    saveComments(next);
+    renderComments();
+}
+
+function initComments() {
+    const els = getCommentFormEls();
+    if (!els.form || !els.list) return;
+
+    els.form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        addCommentFromForm();
+    });
+
+    els.list.addEventListener('click', (e) => {
+        const actionBtn = e.target && e.target.closest ? e.target.closest('[data-comment-action]') : null;
+        if (!actionBtn) return;
+
+        const card = actionBtn.closest('[data-comment-id]');
+        if (!card) return;
+        const id = card.getAttribute('data-comment-id');
+        const action = actionBtn.getAttribute('data-comment-action');
+
+        if (action === 'delete' && editingMode) {
+            deleteCommentById(id);
+            return;
+        }
+
+        if (action === 'toggle-like') {
+            updateCommentById(id, (comment) => {
+                const currentLikes = Number.isFinite(Number(comment.likes)) ? Math.max(0, Number(comment.likes)) : 0;
+                const isLiked = Boolean(comment.liked);
+                return {
+                    liked: !isLiked,
+                    likes: isLiked ? Math.max(0, currentLikes - 1) : currentLikes + 1,
+                };
+            });
+            return;
+        }
+
+        if (action === 'reply' && editingMode) {
+            const replyForm = card.querySelector('[data-comment-reply-form]');
+            if (replyForm) {
+                replyForm.classList.toggle('hidden');
+                const replyInput = replyForm.querySelector('[data-comment-reply-input]');
+                if (replyInput) replyInput.focus();
+            }
+            return;
+        }
+
+        if (action === 'cancel-reply' && editingMode) {
+            const replyForm = card.querySelector('[data-comment-reply-form]');
+            if (replyForm) replyForm.classList.add('hidden');
+            return;
+        }
+    });
+
+    els.list.addEventListener('submit', (e) => {
+        const replyForm = e.target && e.target.closest ? e.target.closest('[data-comment-reply-form]') : null;
+        if (!replyForm || !editingMode) return;
+
+        e.preventDefault();
+        const card = replyForm.closest('[data-comment-id]');
+        if (!card) return;
+        const id = card.getAttribute('data-comment-id');
+        const replyInput = replyForm.querySelector('[data-comment-reply-input]');
+        const reply = String(replyInput?.value || '').trim();
+        if (!reply) return;
+
+        updateCommentById(id, (comment) => ({ reply }));
+    });
+}
+
+function getContactFormEls() {
+    return {
+        form: document.getElementById('contact-form'),
+        whatsappNumber: document.getElementById('contact-whatsapp-number'),
+        whatsappLink: document.getElementById('contact-whatsapp-link-input'),
+        emailAddress: document.getElementById('contact-email-address'),
+        instagramUsername: document.getElementById('contact-instagram-username'),
+        instagramLink: document.getElementById('contact-instagram-link-input'),
+        reset: document.getElementById('contact-reset'),
+    };
+}
+
+function fillContactForm(contact) {
+    const els = getContactFormEls();
+    if (!els.form) return;
+    els.whatsappNumber.value = contact.whatsappNumber || '';
+    els.whatsappLink.value = contact.whatsappLink || '';
+    els.emailAddress.value = contact.emailAddress || '';
+    els.instagramUsername.value = contact.instagramUsername || '';
+    els.instagramLink.value = contact.instagramLink || '';
+}
+
+function resetContactForm() {
+    const els = getContactFormEls();
+    if (!els.form) return;
+    els.form.reset();
+    fillContactForm({ ...DEFAULT_CONTACT });
+}
+
+function saveContactFromForm() {
+    const els = getContactFormEls();
+    if (!els.form) return;
+
+    const payload = {
+        whatsappNumber: String(els.whatsappNumber?.value || '').trim(),
+        whatsappLink: String(els.whatsappLink?.value || '').trim(),
+        emailAddress: String(els.emailAddress?.value || '').trim(),
+        instagramUsername: String(els.instagramUsername?.value || '').trim(),
+        instagramLink: String(els.instagramLink?.value || '').trim(),
+    };
+
+    saveContactLinks(payload);
+    renderContactLinks();
+}
+
+function initContactEditor() {
+    const els = getContactFormEls();
+    if (!els.form) return;
+
+    fillContactForm(loadContactLinks());
+
+    els.form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        saveContactFromForm();
+    });
+
+    if (els.reset) {
+        els.reset.addEventListener('click', () => {
+            saveContactLinks({ ...DEFAULT_CONTACT });
+            resetContactForm();
+            renderContactLinks();
+        });
     }
 }
 
@@ -396,7 +778,7 @@ function renderFeaturedCarousel() {
                 <div class="event-card__body">
                     <p class="event-card__meta">Date TBD</p>
                     <h3 class="event-card__title">Add your first event</h3>
-                    <p class="event-card__description">Enter editing mode and create an event to start the auto carousel.</p>
+                    <p class="event-card__description">Add an event to start the carousel.</p>
                 </div>
             </article>
         `;
@@ -1278,6 +1660,8 @@ function setEditingMode(on) {
     if (!on) {
         collectEditsFromDom();
     }
+
+    renderComments();
 }
 
 function saveEditsIfNeeded() {
@@ -1346,9 +1730,13 @@ document.addEventListener(
 applyStoredEdits();
 renderEvents();
 renderProjects();
+renderContactLinks();
+renderComments();
 initCarousel();
 initOtherEventsToggle();
 initEventCrud();
 initProjectCrud();
+initContactEditor();
+initComments();
 initAboutEditor();
 initAboutDobPicker();

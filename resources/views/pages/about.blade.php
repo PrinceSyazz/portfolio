@@ -20,7 +20,7 @@
                         </div>
                         <div>
                             <dt class="text-xs font-semibold tracking-[0.3em] text-mystic-500">DATE OF BIRTH</dt>
-                            <dd id="about-profile-dob" class="mt-2 cursor-pointer text-sm text-mystic-200 md:text-base" data-editable-id="about-profile-dob" title="Double click to pick date in edit mode">Not set</dd>
+                            <dd id="about-profile-dob" class="mt-2 cursor-pointer text-sm text-mystic-200 md:text-base" data-editable-id="about-profile-dob" title="Double click to change this date">Not set</dd>
                             <input id="about-profile-dob-picker" type="date" class="sr-only" aria-hidden="true" tabindex="-1">
                         </div>
                         <div>
