@@ -74,6 +74,7 @@ function loadEvents() {
                 description: String(item.description || '').trim(),
                 link: String(item.link || '').trim(),
                 image: String(item.image || '').trim(),
+                hidden: Boolean(item.hidden),
                 createdAt: String(item.createdAt || new Date().toISOString()),
             }))
             .filter((item) => item.title.length > 0);
@@ -103,6 +104,7 @@ function loadProjects() {
                 description: String(item.description || '').trim(),
                 link: String(item.link || '').trim(),
                 image: String(item.image || '').trim(),
+                hidden: Boolean(item.hidden),
                 createdAt: String(item.createdAt || new Date().toISOString()),
             }))
             .filter((item) => item.title.length > 0);
@@ -640,6 +642,7 @@ function renderEventCard(event) {
                         ${safeLink ? `<a href="${safeLinkAttr}" target="_blank" rel="noopener noreferrer" class="event-card__view-link">Open event</a>` : '<span class="event-card__view-link">No link</span>'}
                         <div class="event-card__controls">
                             <button type="button" class="event-card__button" data-event-action="edit">Edit</button>
+                            <button type="button" class="event-card__button" data-event-action="hide">Hide</button>
                             <button type="button" class="event-card__button event-card__button--danger" data-event-action="delete">Delete</button>
                         </div>
                     </div>
@@ -684,6 +687,7 @@ function renderCarouselEvent(event) {
                         ${safeLink ? `<a href="${safeLinkAttr}" target="_blank" rel="noopener noreferrer" class="event-card__view-link">Open event</a>` : '<span class="event-card__view-link">No link</span>'}
                         <div class="event-card__controls">
                             <button type="button" class="event-card__button" data-event-action="edit">Edit</button>
+                            <button type="button" class="event-card__button" data-event-action="hide">Hide</button>
                             <button type="button" class="event-card__button event-card__button--danger" data-event-action="delete">Delete</button>
                         </div>
                     </div>
@@ -784,12 +788,38 @@ function renderProjectCard(project) {
                         ${safeLink ? `<a href="${safeLinkAttr}" target="_blank" rel="noopener noreferrer" class="event-card__view-link">View project</a>` : '<span class="event-card__view-link">No link</span>'}
                         <div class="event-card__controls">
                             <button type="button" class="event-card__button" data-project-action="edit">Edit</button>
+                            <button type="button" class="event-card__button" data-project-action="hide">Hide</button>
                             <button type="button" class="event-card__button event-card__button--danger" data-project-action="delete">Delete</button>
                         </div>
                     </div>
                 </div>
             </div>
         </article>
+    `;
+}
+
+function renderProjectAdminListItem(project) {
+    const safeId = escapeHtml(project.id);
+    const safeTitle = escapeHtml(project.title || 'Untitled project');
+    const safeDesc = escapeHtml(project.description || 'No description yet.');
+    const rawDomain = extractDomain(project.link || '');
+    const safeDomain = escapeHtml(rawDomain);
+    const safeLink = hrefFromStoredLink(project.link);
+    const safeLinkAttr = escapeHtml(safeLink);
+
+    return `
+        <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3" data-project-id="${safeId}">
+            <div class="min-w-0">
+                <p class="truncate text-sm font-medium text-mystic-100">${safeTitle}${project.hidden ? ' <span class="text-amber-300">(Hidden)</span>' : ''}</p>
+                <p class="truncate text-xs text-mystic-400">${safeDesc}</p>
+                ${safeLink ? `<a href="${safeLinkAttr}" target="_blank" rel="noopener noreferrer" class="text-xs text-mystic-300 transition hover:text-purple-200">${safeDomain}</a>` : '<p class="text-xs text-mystic-500">No link</p>'}
+            </div>
+            <div class="flex items-center gap-2">
+                <button type="button" class="event-card__button" data-project-action="edit">Edit</button>
+                <button type="button" class="event-card__button" data-project-action="hide">${project.hidden ? 'Unhide' : 'Hide'}</button>
+                <button type="button" class="event-card__button event-card__button--danger" data-project-action="delete">Delete</button>
+            </div>
+        </div>
     `;
 }
 
@@ -867,7 +897,7 @@ function renderFeaturedCarousel() {
     const carouselRoot = document.getElementById('featured-events-list');
     if (!carouselRoot) return;
 
-    const sorted = sortEventsNewest(loadEvents());
+    const sorted = sortEventsNewest(loadEvents()).filter((event) => !event.hidden);
     carouselState.events = sorted.slice(0, 5);
     carouselState.currentIndex = 0;
 
@@ -904,7 +934,7 @@ function renderAllEventsList() {
     const listRoot = document.getElementById('all-events-list');
     if (!listRoot) return;
 
-    const sorted = sortEventsNewest(loadEvents());
+    const sorted = sortEventsNewest(loadEvents()).filter((event) => !event.hidden);
     const nonFeatured = sorted.slice(5);
 
     listRoot.innerHTML = nonFeatured.length
@@ -930,11 +960,12 @@ function renderEventsAdminList() {
             return `
                 <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3" data-event-id="${safeId}">
                     <div class="min-w-0">
-                        <p class="truncate text-sm font-medium text-mystic-100">${safeTitle}</p>
+                        <p class="truncate text-sm font-medium text-mystic-100">${safeTitle}${event.hidden ? ' <span class="text-amber-300">(Hidden)</span>' : ''}</p>
                         <p class="text-xs text-mystic-400">${safeDate}</p>
                     </div>
                     <div class="flex items-center gap-2">
                         <button type="button" class="event-card__button" data-event-action="edit">Edit</button>
+                        <button type="button" class="event-card__button" data-event-action="hide">${event.hidden ? 'Unhide' : 'Hide'}</button>
                         <button type="button" class="event-card__button event-card__button--danger" data-event-action="delete">Delete</button>
                     </div>
                 </div>
@@ -1011,19 +1042,23 @@ function upsertProjectFromForm() {
     const id = els.id.value.trim();
     const nowIso = new Date().toISOString();
 
+    const existingIndex = projects.findIndex((project) => project.id === (id || ''));
+    const existingProject = existingIndex >= 0 ? projects[existingIndex] : null;
+
     const payload = {
         id: id || `proj-${Date.now()}`,
         title,
         description: (els.description.value || '').trim(),
         link: (els.link.value || '').trim(),
         image: pendingProjectImageData || editingProjectImageData || '',
+        hidden: Boolean(existingProject && existingProject.hidden),
         createdAt: nowIso,
     };
 
-    const existingIndex = projects.findIndex((project) => project.id === payload.id);
-    if (existingIndex >= 0) {
-        payload.createdAt = projects[existingIndex].createdAt || nowIso;
-        projects[existingIndex] = payload;
+    const payloadIndex = projects.findIndex((project) => project.id === payload.id);
+    if (payloadIndex >= 0) {
+        payload.createdAt = projects[payloadIndex].createdAt || nowIso;
+        projects[payloadIndex] = payload;
     } else {
         projects.push(payload);
     }
@@ -1046,20 +1081,42 @@ function deleteProjectById(id) {
     }
 }
 
+function toggleProjectHiddenById(id) {
+    if (!id) return;
+    const projects = loadProjects();
+    const index = projects.findIndex((project) => project.id === id);
+    if (index < 0) return;
+    projects[index] = {
+        ...projects[index],
+        hidden: !projects[index].hidden,
+    };
+    saveProjects(projects);
+    renderProjects();
+}
+
 function renderProjects() {
     const listRoot = document.getElementById('projects-list');
     if (!listRoot) return;
 
     const sorted = sortProjectsNewest(loadProjects());
-    listRoot.innerHTML = sorted.length
-        ? sorted.map((project) => renderProjectCard(project)).join('')
+    const visibleProjects = sorted.filter((project) => !project.hidden);
+    listRoot.innerHTML = visibleProjects.length
+        ? visibleProjects.map((project) => renderProjectCard(project)).join('')
         : '<p class="glass-panel p-6 text-mystic-300 text-center py-12">No projects yet.</p>';
     bindLinkPreviewFallbacks(listRoot);
+
+    const adminListRoot = document.getElementById('projects-admin-list');
+    if (adminListRoot) {
+        adminListRoot.innerHTML = sorted.length
+            ? sorted.map((project) => renderProjectAdminListItem(project)).join('')
+            : '<p class="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-mystic-300">No projects added yet.</p>';
+    }
 }
 
 function initProjectCrud() {
     const els = getProjectFormEls();
     const listRoot = document.getElementById('projects-list');
+    const adminListRoot = document.getElementById('projects-admin-list');
 
     if (els.form) {
         els.form.addEventListener('submit', (e) => {
@@ -1093,8 +1150,7 @@ function initProjectCrud() {
         });
     }
 
-    if (listRoot) {
-        listRoot.addEventListener('click', (e) => {
+    const handleProjectActionClick = (e) => {
             const button = e.target && e.target.closest ? e.target.closest('[data-project-action]') : null;
             if (!button) return;
 
@@ -1109,10 +1165,19 @@ function initProjectCrud() {
 
             if (action === 'edit') {
                 fillProjectForm(project);
+            } else if (action === 'hide') {
+                toggleProjectHiddenById(id);
             } else if (action === 'delete') {
                 deleteProjectById(id);
             }
-        });
+    };
+
+    if (listRoot) {
+        listRoot.addEventListener('click', handleProjectActionClick);
+    }
+
+    if (adminListRoot) {
+        adminListRoot.addEventListener('click', handleProjectActionClick);
     }
 }
 
@@ -1195,6 +1260,9 @@ function upsertEventFromForm() {
     const rawLink = (els.link.value || '').trim();
     const linkNormalized = rawLink ? hrefFromStoredLink(rawLink) || normalizeExternalUrl(rawLink) || rawLink : '';
 
+    const existingIndex = events.findIndex((event) => event.id === (id || ''));
+    const existingEvent = existingIndex >= 0 ? events[existingIndex] : null;
+
     const payload = {
         id: id || `evt-${Date.now()}`,
         title,
@@ -1202,13 +1270,14 @@ function upsertEventFromForm() {
         description: (els.description.value || '').trim(),
         link: linkNormalized,
         image: pendingUploadImageData || editingEventImageData || '',
+        hidden: Boolean(existingEvent && existingEvent.hidden),
         createdAt: nowIso,
     };
 
-    const existingIndex = events.findIndex((event) => event.id === payload.id);
-    if (existingIndex >= 0) {
-        payload.createdAt = events[existingIndex].createdAt || nowIso;
-        events[existingIndex] = payload;
+    const payloadIndex = events.findIndex((event) => event.id === payload.id);
+    if (payloadIndex >= 0) {
+        payload.createdAt = events[payloadIndex].createdAt || nowIso;
+        events[payloadIndex] = payload;
     } else {
         events.push(payload);
     }
@@ -1231,6 +1300,20 @@ function deleteEventById(id) {
     if (els.id && els.id.value === id) {
         resetEventForm();
     }
+}
+
+function toggleEventHiddenById(id) {
+    if (!id) return;
+    const events = loadEvents();
+    const index = events.findIndex((event) => event.id === id);
+    if (index < 0) return;
+    events[index] = {
+        ...events[index],
+        hidden: !events[index].hidden,
+    };
+    saveEvents(events);
+    renderEvents();
+    initCarousel();
 }
 
 function readImageFileAsDataUrl(file) {
@@ -1315,6 +1398,10 @@ function initEventCrud() {
         if (btn.getAttribute('data-event-action') === 'edit') {
             const event = loadEvents().find((item) => item.id === eventId);
             if (event) fillEventForm(event);
+        }
+
+        if (btn.getAttribute('data-event-action') === 'hide') {
+            toggleEventHiddenById(eventId);
         }
 
         if (btn.getAttribute('data-event-action') === 'delete') {

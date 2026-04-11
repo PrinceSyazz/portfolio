@@ -45,6 +45,12 @@
                         <button type="button" id="project-reset" class="events-editor__button">Clear</button>
                     </div>
                 </form>
+
+                <div class="mt-8">
+                    <h4 class="font-display text-lg font-semibold text-mystic-100">Project List</h4>
+                    <p class="mt-1 text-xs text-mystic-400">Use this list to quickly edit or delete any project.</p>
+                    <div id="projects-admin-list" class="mt-4 space-y-3"></div>
+                </div>
             </div>
         </div>
     </div>
