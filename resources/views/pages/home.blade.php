@@ -12,15 +12,25 @@
                 </div>
             </div>
 
-            <div class="mt-10 flex justify-center" data-reveal>
-                <div class="featured-carousel-container">
-                    <button type="button" id="featured-carousel-prev" class="featured-carousel__arrow featured-carousel__arrow--prev" aria-label="Previous event">
+            <div class="mt-10 flex w-full justify-center" data-reveal>
+                <div class="featured-carousel-wrap relative w-full max-w-4xl">
+                    <div id="featured-events-list" class="featured-carousel w-full" data-reveal></div>
+                    <button
+                        type="button"
+                        id="featured-carousel-prev"
+                        class="featured-carousel__arrow featured-carousel__arrow--prev"
+                        aria-label="Previous event"
+                    >
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                         </svg>
                     </button>
-                    <div id="featured-events-list" class="featured-carousel" data-reveal></div>
-                    <button type="button" id="featured-carousel-next" class="featured-carousel__arrow featured-carousel__arrow--next" aria-label="Next event">
+                    <button
+                        type="button"
+                        id="featured-carousel-next"
+                        class="featured-carousel__arrow featured-carousel__arrow--next"
+                        aria-label="Next event"
+                    >
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                         </svg>
@@ -58,22 +68,22 @@
 
                     <label class="events-editor__field md:col-span-2">
                         <span class="events-editor__label">Title</span>
-                        <input id="event-title" name="title" type="text" required class="events-editor__input" placeholder="Event title">
+                        <input id="event-title" name="title" type="text" required class="events-editor__input events-editor__input--glass" placeholder="Event title">
                     </label>
 
                     <label class="events-editor__field">
                         <span class="events-editor__label">Event Date</span>
-                        <input id="event-date" name="date" type="date" required class="events-editor__input">
+                        <input id="event-date" name="date" type="date" required class="events-editor__input events-editor__input--glass">
                     </label>
 
                     <label class="events-editor__field md:col-span-2">
                         <span class="events-editor__label">Description</span>
-                        <textarea id="event-description" name="description" rows="3" class="events-editor__input" placeholder="What happened in this event?"></textarea>
+                        <textarea id="event-description" name="description" rows="3" class="events-editor__input events-editor__input--glass" placeholder="What happened in this event?"></textarea>
                     </label>
 
                     <label class="events-editor__field md:col-span-2">
                         <span class="events-editor__label">Event/Post Link (optional)</span>
-                        <input id="event-link" name="link" type="url" class="events-editor__input" placeholder="https://instagram.com/p/... or any event link">
+                        <input id="event-link" name="link" type="url" class="events-editor__input events-editor__input--glass" placeholder="https://instagram.com/p/... or any event link">
                     </label>
 
                     <div class="events-editor__field md:col-span-2">
@@ -90,6 +100,12 @@
                         <button type="button" id="event-reset" class="events-editor__button">Cancel Edit</button>
                     </div>
                 </form>
+
+                <div class="mt-8">
+                    <h4 class="font-display text-lg font-semibold text-mystic-100">Event List</h4>
+                    <p class="mt-1 text-xs text-mystic-400">Use this list to quickly edit or delete any event.</p>
+                    <div id="events-admin-list" class="mt-4 space-y-3"></div>
+                </div>
             </div>
         </div>
     </section>

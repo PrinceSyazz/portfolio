@@ -503,27 +503,74 @@ function sortEventsNewest(events) {
     return [...events].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
+/** Add https:// for pasted links like instagram.com/... */
+function normalizeExternalUrl(url) {
+    const t = String(url || '').trim();
+    if (!t) return '';
+    if (/^https?:\/\//i.test(t)) return t;
+    if (/^\/\//.test(t)) return `https:${t}`;
+    if (/^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}/i.test(t)) return `https://${t}`;
+    return t;
+}
+
 function extractDomain(url) {
     try {
-        return new URL(url).hostname.replace(/^www\./, '');
+        const normalized = normalizeExternalUrl(url);
+        return new URL(normalized).hostname.replace(/^www\./, '');
     } catch {
         return 'event link';
     }
 }
 
-function previewImageFromLink(url) {
-    if (!url) return '';
-    const lowered = url.toLowerCase();
+/** Valid http(s) href for anchors — accepts stored links missing https:// */
+function hrefFromStoredLink(url) {
+    const n = normalizeExternalUrl(String(url || '').trim());
+    if (!n) return '';
+    try {
+        const u = new URL(n);
+        if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+        return u.href;
+    } catch {
+        return '';
+    }
+}
+
+/**
+ * Preview image when no upload: direct image URL, else mshots screenshot.
+ * Instagram /media/ hotlinks are blocked in browsers — use mshots for all pages.
+ */
+function previewImageFromLink(url, shotSize = {}) {
+    const trimmed = normalizeExternalUrl(url);
+    if (!trimmed) return '';
+    const lowered = trimmed.toLowerCase();
     if (/\.(png|jpe?g|gif|webp|avif)(\?.*)?$/.test(lowered)) {
-        return url;
+        return trimmed;
     }
 
-    const igMatch = url.match(/instagram\.com\/(?:p|reel)\/([^/?#]+)/i);
-    if (igMatch && igMatch[1]) {
-        return `https://www.instagram.com/p/${igMatch[1]}/media/?size=l`;
+    if (/^https?:\/\//i.test(trimmed)) {
+        try {
+            const encoded = encodeURIComponent(trimmed);
+            const w = shotSize.w || 1280;
+            const h = shotSize.h || 720;
+            return `https://s0.wp.com/mshots/v1/${encoded}?w=${w}&h=${h}`;
+        } catch {
+            return '';
+        }
     }
 
     return '';
+}
+
+/** Inner media markup for link previews (projects + events). */
+function renderLinkPreviewMediaInner(mediaCandidate, rawDomain, safeTitle, emptyFallbackDetail, extraImgClass = '') {
+    const safeDomain = escapeHtml(rawDomain);
+    const domainAttr = encodeURIComponent(rawDomain);
+    const detail = escapeHtml(emptyFallbackDetail || 'Add a link or image in edit mode');
+    const imgExtra = extraImgClass ? ` ${extraImgClass}` : '';
+    if (mediaCandidate) {
+        return `<img src="${escapeHtml(mediaCandidate)}" alt="${safeTitle} preview" class="event-card__preview-img${imgExtra} h-full w-full object-cover object-top" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-link-preview-img data-preview-domain="${domainAttr}">`;
+    }
+    return `<div class="event-card__fallback"><p class="event-card__domain">${safeDomain || '—'}</p><p class="mt-2 text-sm text-mystic-200">${detail}</p></div>`;
 }
 
 function escapeHtml(text) {
@@ -568,29 +615,33 @@ function renderEventCard(event) {
     const safeTitle = escapeHtml(event.title || 'Untitled event');
     const safeMeta = escapeHtml(formatEventDate(event.eventDate || ''));
     const safeDesc = escapeHtml(event.description || 'No description yet.');
-    const safeDomain = escapeHtml(extractDomain(event.link || ''));
-    const safeLink = event.link && /^https?:\/\//i.test(event.link) ? event.link : '';
+    const rawDomain = extractDomain(event.link || '');
+    const safeDomain = escapeHtml(rawDomain);
+    const safeLink = hrefFromStoredLink(event.link);
     const safeLinkAttr = escapeHtml(safeLink);
 
     const mediaCandidate = event.image || previewImageFromLink(event.link);
-    const mediaMarkup = mediaCandidate
-        ? `<img src="${escapeHtml(mediaCandidate)}" alt="${safeTitle}" loading="lazy" onerror="this.remove(); this.parentElement.insertAdjacentHTML('beforeend','<div class=\"event-card__fallback\"><p class=\"event-card__domain\">${safeDomain}</p><p class=\"mt-2 text-sm text-mystic-200\">Link preview</p></div>');">`
-        : `<div class="event-card__fallback"><p class="event-card__domain">${safeDomain}</p><p class="mt-2 text-sm text-mystic-200">Link preview</p></div>`;
+    const mediaInner = renderLinkPreviewMediaInner(mediaCandidate, rawDomain, safeTitle, 'Add a link or image in edit mode');
 
     return `
-        <article class="event-card" data-event-id="${escapeHtml(event.id)}">
-            <div class="event-card__media">
-                ${mediaMarkup}
-            </div>
-            <div class="event-card__body">
-                <p class="event-card__meta">${safeMeta}</p>
-                <h3 class="event-card__title">${safeTitle}</h3>
-                <p class="event-card__description">${safeDesc}</p>
-                <div class="event-card__links">
-                    ${safeLink ? `<a href="${safeLinkAttr}" target="_blank" rel="noopener noreferrer" class="event-card__view-link">Open event</a>` : '<span class="event-card__view-link">No link</span>'}
-                    <div class="event-card__controls">
-                        <button type="button" class="event-card__button" data-event-action="edit">Edit</button>
-                        <button type="button" class="event-card__button event-card__button--danger" data-event-action="delete">Delete</button>
+        <article class="event-card event-card--event event-card--preview-stack" data-event-id="${escapeHtml(event.id)}">
+            <div class="event-card__stack">
+                <a href="${safeLinkAttr || '#'}" target="_blank" rel="noopener noreferrer" class="event-card__media event-card__media--stacked group block ${safeLink ? '' : 'pointer-events-none'}" aria-label="${safeTitle} — preview">
+                    <div class="absolute inset-0 overflow-hidden" data-link-preview-inner>
+                        ${mediaInner}
+                    </div>
+                </a>
+                <div class="event-card__body event-card__body--stacked">
+                    <p class="event-card__meta">${safeMeta}</p>
+                    <h3 class="event-card__title">${safeTitle}</h3>
+                    ${safeLink ? `<p class="event-card__hostname"><a href="${safeLinkAttr}" target="_blank" rel="noopener noreferrer" class="event-card__hostname-link">${safeDomain}</a></p>` : ''}
+                    <p class="event-card__description">${safeDesc}</p>
+                    <div class="event-card__links">
+                        ${safeLink ? `<a href="${safeLinkAttr}" target="_blank" rel="noopener noreferrer" class="event-card__view-link">Open event</a>` : '<span class="event-card__view-link">No link</span>'}
+                        <div class="event-card__controls">
+                            <button type="button" class="event-card__button" data-event-action="edit">Edit</button>
+                            <button type="button" class="event-card__button event-card__button--danger" data-event-action="delete">Delete</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -608,29 +659,33 @@ function renderCarouselEvent(event) {
     const safeTitle = escapeHtml(event.title || 'Untitled event');
     const safeMeta = escapeHtml(formatEventDate(event.eventDate || ''));
     const safeDesc = escapeHtml(event.description || 'No description yet.');
-    const safeDomain = escapeHtml(extractDomain(event.link || ''));
-    const safeLink = event.link && /^https?:\/\//i.test(event.link) ? event.link : '';
+    const rawDomain = extractDomain(event.link || '');
+    const safeDomain = escapeHtml(rawDomain);
+    const safeLink = hrefFromStoredLink(event.link);
     const safeLinkAttr = escapeHtml(safeLink);
 
-    const mediaCandidate = event.image || previewImageFromLink(event.link);
-    const mediaMarkup = mediaCandidate
-        ? `<img src="${escapeHtml(mediaCandidate)}" alt="${safeTitle}" loading="lazy" onerror="this.remove(); this.parentElement.insertAdjacentHTML('beforeend','<div class=\"event-card__fallback\"><p class=\"event-card__domain\">${safeDomain}</p><p class=\"mt-2 text-sm text-mystic-200\">Link preview</p></div>');">`
-        : `<div class="event-card__fallback"><p class="event-card__domain">${safeDomain}</p><p class="mt-2 text-sm text-mystic-200">Link preview</p></div>`;
+    const mediaCandidate = event.image || previewImageFromLink(event.link, { w: 1920, h: 1080 });
+    const mediaInner = renderLinkPreviewMediaInner(mediaCandidate, rawDomain, safeTitle, 'Add a link or image in edit mode');
 
     return `
-        <article class="event-card featured-carousel-item" data-event-id="${escapeHtml(event.id)}">
-            <div class="event-card__media">
-                ${mediaMarkup}
-            </div>
-            <div class="event-card__body">
-                <p class="event-card__meta">${safeMeta}</p>
-                <h3 class="event-card__title">${safeTitle}</h3>
-                <p class="event-card__description">${safeDesc}</p>
-                <div class="event-card__links">
-                    ${safeLink ? `<a href="${safeLinkAttr}" target="_blank" rel="noopener noreferrer" class="event-card__view-link">Open event</a>` : '<span class="event-card__view-link">No link</span>'}
-                    <div class="event-card__controls">
-                        <button type="button" class="event-card__button" data-event-action="edit">Edit</button>
-                        <button type="button" class="event-card__button event-card__button--danger" data-event-action="delete">Delete</button>
+        <article class="event-card event-card--event event-card--preview-stack featured-carousel-item" data-event-id="${escapeHtml(event.id)}">
+            <div class="event-card__stack">
+                <a href="${safeLinkAttr || '#'}" target="_blank" rel="noopener noreferrer" class="event-card__media event-card__media--stacked group block ${safeLink ? '' : 'pointer-events-none'}" aria-label="${safeTitle} — preview">
+                    <div class="absolute inset-0 overflow-hidden" data-link-preview-inner>
+                        ${mediaInner}
+                    </div>
+                </a>
+                <div class="event-card__body event-card__body--stacked">
+                    <p class="event-card__meta">${safeMeta}</p>
+                    <h3 class="event-card__title">${safeTitle}</h3>
+                    ${safeLink ? `<p class="event-card__hostname"><a href="${safeLinkAttr}" target="_blank" rel="noopener noreferrer" class="event-card__hostname-link">${safeDomain}</a></p>` : ''}
+                    <p class="event-card__description">${safeDesc}</p>
+                    <div class="event-card__links">
+                        ${safeLink ? `<a href="${safeLinkAttr}" target="_blank" rel="noopener noreferrer" class="event-card__view-link">Open event</a>` : '<span class="event-card__view-link">No link</span>'}
+                        <div class="event-card__controls">
+                            <button type="button" class="event-card__button" data-event-action="edit">Edit</button>
+                            <button type="button" class="event-card__button event-card__button--danger" data-event-action="delete">Delete</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -642,61 +697,95 @@ function renderEventListItem(event) {
     const safeTitle = escapeHtml(event.title || 'Untitled event');
     const safeMeta = escapeHtml(formatEventDate(event.eventDate || ''));
     const safeDesc = escapeHtml(event.description || 'No description yet.');
-    const safeDomain = escapeHtml(extractDomain(event.link || ''));
-    const safeLink = event.link && /^https?:\/\//i.test(event.link) ? event.link : '';
+    const rawDomain = extractDomain(event.link || '');
+    const safeDomain = escapeHtml(rawDomain);
+    const safeLink = hrefFromStoredLink(event.link);
     const safeLinkAttr = escapeHtml(safeLink);
 
     const mediaCandidate = event.image || previewImageFromLink(event.link);
-    const mediaMarkup = mediaCandidate
-        ? `<img src="${escapeHtml(mediaCandidate)}" alt="${safeTitle}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'event-list-item__fallback\\'><p class=\\'event-list-item__domain\\'>${safeDomain}</p></div>';">`
-        : `<div class="event-list-item__fallback"><p class="event-list-item__domain">${safeDomain}</p></div>`;
+    const mediaInner = renderLinkPreviewMediaInner(
+        mediaCandidate,
+        rawDomain,
+        safeTitle,
+        'Add a link or image in edit mode',
+        'event-list-item__preview-img',
+    );
 
     return `
         <article class="event-list-item" data-event-id="${escapeHtml(event.id)}">
             <div class="event-list-item__content">
                 <p class="event-list-item__date">📅 ${safeMeta}</p>
                 <h2 class="event-list-item__title">${safeTitle}</h2>
+                ${safeLink ? `<p class="event-card__hostname event-list-item__hostname"><a href="${safeLinkAttr}" target="_blank" rel="noopener noreferrer" class="event-card__hostname-link">${safeDomain}</a></p>` : ''}
                 <p class="event-list-item__description">${safeDesc}</p>
                 ${safeLink ? `<a href="${safeLinkAttr}" target="_blank" rel="noopener noreferrer" class="event-list-item__link">View event →</a>` : ''}
             </div>
-            <div class="event-list-item__image">
-                ${mediaMarkup}
-            </div>
+            <a href="${safeLinkAttr || '#'}" target="_blank" rel="noopener noreferrer" class="event-list-item__image group ${safeLink ? '' : 'pointer-events-none'}" aria-label="${safeTitle} — preview">
+                <div class="relative h-full w-full overflow-hidden" data-link-preview-inner>
+                    ${mediaInner}
+                </div>
+            </a>
         </article>
     `;
+}
+
+function bindLinkPreviewFallbacks(root) {
+    if (!root) return;
+    root.querySelectorAll('img[data-link-preview-img]').forEach((img) => {
+        img.addEventListener(
+            'error',
+            () => {
+                const inner = img.closest('[data-link-preview-inner]');
+                if (!inner) return;
+                let domain = '';
+                try {
+                    domain = decodeURIComponent(img.getAttribute('data-preview-domain') || '');
+                } catch {
+                    domain = '';
+                }
+                const label = escapeHtml(domain || 'Link');
+                inner.innerHTML = `<div class="event-card__fallback"><p class="event-card__domain">${label}</p><p class="mt-2 text-sm text-mystic-200">Preview unavailable</p></div>`;
+            },
+            { once: true },
+        );
+    });
 }
 
 function renderProjectCard(project) {
     const safeTitle = escapeHtml(project.title || 'Untitled project');
     const safeDesc = escapeHtml(project.description || 'No description yet.');
-    const safeDomain = escapeHtml(extractDomain(project.link || ''));
-    const safeLink = project.link && /^https?:\/\//i.test(project.link) ? project.link : '';
+    const rawDomain = extractDomain(project.link || '');
+    const safeDomain = escapeHtml(rawDomain);
+    const safeLink = hrefFromStoredLink(project.link);
     const safeLinkAttr = escapeHtml(safeLink);
     const safeCreatedAt = escapeHtml(formatEventDate(project.createdAt || ''));
 
     const mediaCandidate = project.image || previewImageFromLink(project.link);
-    const mediaMarkup = mediaCandidate
-        ? `<img src="${escapeHtml(mediaCandidate)}" alt="${safeTitle} preview" loading="lazy" onerror="this.remove(); this.parentElement.insertAdjacentHTML('beforeend','<div class=\"event-card__fallback\"><p class=\"event-card__domain\">${safeDomain}</p><p class=\"mt-2 text-sm text-mystic-200\">Link preview</p></div>');">`
-        : `<div class="event-card__fallback"><p class="event-card__domain">${safeDomain}</p><p class="mt-2 text-sm text-mystic-200">Link preview</p></div>`;
+    const mediaInner = renderLinkPreviewMediaInner(mediaCandidate, rawDomain, safeTitle, 'Add a link or image in edit mode');
 
     return `
-        <article class="event-card" data-project-id="${escapeHtml(project.id)}">
-            <a href="${safeLinkAttr || '#'}" target="_blank" rel="noopener noreferrer" class="event-card__media group block ${safeLink ? '' : 'pointer-events-none'}">
-                ${mediaMarkup}
-                <div class="event-card__fallback pointer-events-none absolute inset-0 flex flex-col justify-end bg-[linear-gradient(160deg,rgba(88,28,135,0.18)_0%,rgba(24,16,44,0.68)_60%,rgba(10,6,18,0.88)_100%)] p-5">
-                    <p class="event-card__domain">Project preview</p>
-                    <p class="mt-2 text-sm text-mystic-200">${safeDomain || 'Open project website'}</p>
-                </div>
-            </a>
-            <div class="event-card__body">
-                <p class="event-card__meta">${safeCreatedAt}</p>
-                <h3 class="event-card__title">${safeTitle}</h3>
-                <p class="event-card__description">${safeDesc}</p>
-                <div class="event-card__links">
-                    ${safeLink ? `<a href="${safeLinkAttr}" target="_blank" rel="noopener noreferrer" class="event-card__view-link">View project</a>` : '<span class="event-card__view-link">No link</span>'}
-                    <div class="event-card__controls">
-                        <button type="button" class="event-card__button" data-project-action="edit">Edit</button>
-                        <button type="button" class="event-card__button event-card__button--danger" data-project-action="delete">Delete</button>
+        <article class="event-card event-card--project event-card--preview-stack" data-project-id="${escapeHtml(project.id)}">
+            <div class="event-card__stack">
+                <a href="${safeLinkAttr || '#'}" target="_blank" rel="noopener noreferrer" class="event-card__media event-card__media--stacked group block ${safeLink ? '' : 'pointer-events-none'}" aria-label="${safeTitle} — preview">
+                    <div class="absolute inset-0 overflow-hidden" data-link-preview-inner>
+                        ${mediaInner}
+                    </div>
+                </a>
+                <div class="event-card__body event-card__body--stacked">
+                    <p class="event-card__meta">${safeCreatedAt}</p>
+                    <h3 class="event-card__title">${safeTitle}</h3>
+                    ${
+                        safeLink
+                            ? `<p class="event-card__hostname"><a href="${safeLinkAttr}" target="_blank" rel="noopener noreferrer" class="event-card__hostname-link">${safeDomain}</a></p>`
+                            : ''
+                    }
+                    <p class="event-card__description">${safeDesc}</p>
+                    <div class="event-card__links">
+                        ${safeLink ? `<a href="${safeLinkAttr}" target="_blank" rel="noopener noreferrer" class="event-card__view-link">View project</a>` : '<span class="event-card__view-link">No link</span>'}
+                        <div class="event-card__controls">
+                            <button type="button" class="event-card__button" data-project-action="edit">Edit</button>
+                            <button type="button" class="event-card__button event-card__button--danger" data-project-action="delete">Delete</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -710,7 +799,9 @@ function updateCarouselDisplay() {
 
     const items = carousel.querySelectorAll('.featured-carousel-item');
     items.forEach((item, i) => {
-        item.classList.toggle('featured-carousel-item--active', i === carouselState.currentIndex);
+        const active = i === carouselState.currentIndex;
+        item.classList.toggle('featured-carousel-item--active', active);
+        item.setAttribute('aria-hidden', active ? 'false' : 'true');
     });
 }
 
@@ -762,9 +853,11 @@ function initCarousel() {
         });
     }
 
-    if (carousel) {
-        carousel.addEventListener('mouseenter', stopCarouselAutoRotate);
-        carousel.addEventListener('mouseleave', startCarouselAutoRotate);
+    const carouselWrap = document.querySelector('.featured-carousel-wrap');
+    const pauseTarget = carouselWrap || carousel;
+    if (pauseTarget) {
+        pauseTarget.addEventListener('mouseenter', stopCarouselAutoRotate);
+        pauseTarget.addEventListener('mouseleave', startCarouselAutoRotate);
     }
 
     startCarouselAutoRotate();
@@ -780,17 +873,21 @@ function renderFeaturedCarousel() {
 
     if (carouselState.events.length === 0) {
         carouselRoot.innerHTML = `
-            <article class="event-card featured-carousel-item featured-carousel-item--active event-card--empty">
-                <div class="event-card__media">
-                    <div class="event-card__fallback">
-                        <p class="event-card__domain">Featured Events</p>
-                        <p class="mt-2 text-sm text-mystic-200">No featured events yet</p>
+            <article class="event-card event-card--event featured-carousel-item featured-carousel-item--active event-card--empty" aria-hidden="false">
+                <div class="event-card__stack event-card__stack--empty relative min-h-[280px] overflow-hidden rounded-2xl border border-white/15">
+                    <div class="event-card__media pointer-events-none absolute inset-0">
+                        <div class="absolute inset-0 overflow-hidden">
+                            <div class="event-card__fallback">
+                                <p class="event-card__domain">Featured Events</p>
+                                <p class="mt-2 text-sm text-mystic-200">No featured events yet</p>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div class="event-card__body">
-                    <p class="event-card__meta">Date TBD</p>
-                    <h3 class="event-card__title">Add your first event</h3>
-                    <p class="event-card__description">Add an event to start the carousel.</p>
+                    <div class="event-card__body event-card__body--stacked event-card__body--empty-placeholder">
+                        <p class="event-card__meta">Date TBD</p>
+                        <h3 class="event-card__title">Add your first event</h3>
+                        <p class="event-card__description">Add an event to start the carousel.</p>
+                    </div>
                 </div>
             </article>
         `;
@@ -815,9 +912,43 @@ function renderAllEventsList() {
         : '<p class="glass-panel p-6 text-mystic-300 text-center py-12">No other events yet.</p>';
 }
 
+function renderEventsAdminList() {
+    const root = document.getElementById('events-admin-list');
+    if (!root) return;
+
+    const sorted = sortEventsNewest(loadEvents());
+    if (!sorted.length) {
+        root.innerHTML = '<p class="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-mystic-300">No events added yet.</p>';
+        return;
+    }
+
+    root.innerHTML = sorted
+        .map((event) => {
+            const safeId = escapeHtml(event.id);
+            const safeTitle = escapeHtml(event.title || 'Untitled event');
+            const safeDate = escapeHtml(formatEventDate(event.eventDate || ''));
+            return `
+                <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3" data-event-id="${safeId}">
+                    <div class="min-w-0">
+                        <p class="truncate text-sm font-medium text-mystic-100">${safeTitle}</p>
+                        <p class="text-xs text-mystic-400">${safeDate}</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" class="event-card__button" data-event-action="edit">Edit</button>
+                        <button type="button" class="event-card__button event-card__button--danger" data-event-action="delete">Delete</button>
+                    </div>
+                </div>
+            `;
+        })
+        .join('');
+}
+
 function renderEvents() {
     renderFeaturedCarousel();
     renderAllEventsList();
+    renderEventsAdminList();
+    bindLinkPreviewFallbacks(document.getElementById('featured-events-list'));
+    bindLinkPreviewFallbacks(document.getElementById('all-events-list'));
 }
 
 function getProjectFormEls() {
@@ -923,6 +1054,7 @@ function renderProjects() {
     listRoot.innerHTML = sorted.length
         ? sorted.map((project) => renderProjectCard(project)).join('')
         : '<p class="glass-panel p-6 text-mystic-300 text-center py-12">No projects yet.</p>';
+    bindLinkPreviewFallbacks(listRoot);
 }
 
 function initProjectCrud() {
@@ -1060,12 +1192,15 @@ function upsertEventFromForm() {
     const id = els.id.value.trim();
     const nowIso = new Date().toISOString();
 
+    const rawLink = (els.link.value || '').trim();
+    const linkNormalized = rawLink ? hrefFromStoredLink(rawLink) || normalizeExternalUrl(rawLink) || rawLink : '';
+
     const payload = {
         id: id || `evt-${Date.now()}`,
         title,
         eventDate,
         description: (els.description.value || '').trim(),
-        link: (els.link.value || '').trim(),
+        link: linkNormalized,
         image: pendingUploadImageData || editingEventImageData || '',
         createdAt: nowIso,
     };

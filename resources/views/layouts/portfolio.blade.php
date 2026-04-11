@@ -44,7 +44,8 @@
             <div class="absolute -right-1/4 bottom-0 h-[65vh] w-[65vw] rounded-full bg-violet-900/30 blur-[100px] animate-smoke-b" aria-hidden="true"></div>
             <div class="absolute left-1/3 top-1/4 h-[50vh] w-[50vw] rounded-full bg-fuchsia-950/35 blur-[90px] animate-smoke-c" aria-hidden="true"></div>
             <div class="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(88,28,135,0.35),transparent_55%)]" aria-hidden="true"></div>
-            <div class="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,6,18,0.3)_0%,rgba(10,6,18,0.85)_55%,#0a0612_100%)]" aria-hidden="true"></div>
+            {{-- Soft violet wash only — avoid a heavy black band at the bottom (it was showing through glass & around cards) --}}
+            <div class="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,6,18,0.06)_0%,rgba(88,28,135,0.1)_50%,rgba(10,6,18,0.22)_100%)]" aria-hidden="true"></div>
             <div
                 class="absolute inset-0 opacity-[0.07] mix-blend-overlay"
                 style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 256 256%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23n)%22/%3E%3C/svg%3E');"

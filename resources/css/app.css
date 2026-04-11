@@ -212,16 +212,62 @@
         @apply flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] shadow-[0_0_40px_rgba(88,28,135,0.15)] backdrop-blur-md;
     }
 
-    .event-card__media {
+    /* Stacked preview: screenshot fills the card; glass sits on top (does not replace a second “row” of preview) */
+    .event-card--preview-stack.event-card {
+        @apply border-0 bg-transparent p-0 shadow-none backdrop-blur-none;
+    }
+
+    .event-card__stack {
+        @apply relative w-full min-h-[380px] overflow-hidden rounded-2xl border border-white/15 shadow-[0_0_36px_rgba(167,139,250,0.18)] md:min-h-[440px];
+    }
+
+    .event-card__media--stacked {
+        @apply absolute inset-0 z-0 block min-h-full bg-transparent;
+    }
+
+    .event-card__stack [data-link-preview-inner] {
+        @apply absolute inset-0;
+    }
+
+    .event-card__stack .event-card__preview-img {
+        @apply absolute inset-0 h-full w-full object-cover object-top;
+    }
+
+    .event-card__body--stacked {
+        @apply pointer-events-auto absolute inset-x-0 bottom-0 z-10 flex max-h-[72%] flex-col overflow-y-auto rounded-t-2xl border border-white/50 bg-white/55 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] backdrop-blur-xl backdrop-saturate-150 md:p-6;
+    }
+
+    .event-card--project:not(.event-card--empty) .event-card__view-link,
+    .event-card--event:not(.event-card--empty) .event-card__view-link {
+        @apply font-semibold text-purple-600 underline decoration-purple-400/60 underline-offset-2 transition hover:text-purple-500 hover:decoration-purple-400;
+    }
+
+    .event-card--empty .event-card__body:not(.event-card__body--stacked) {
+        @apply relative m-0 rounded-none border-0 bg-transparent p-6 shadow-none backdrop-blur-none;
+    }
+
+    .event-card--empty .event-card__media {
+        @apply min-h-[200px];
+    }
+
+    .event-card--empty .event-card__stack {
+        @apply min-h-[280px];
+    }
+
+    .event-card__media:not(.event-card__media--stacked) {
         @apply relative h-44 w-full bg-mystic-900/80;
     }
 
-    .event-card__media img {
+    .event-card__media:not(.event-card__media--stacked) img {
         @apply h-full w-full object-cover;
     }
 
+    .event-card__preview-img {
+        @apply object-top;
+    }
+
     .event-card__fallback {
-        @apply absolute inset-0 flex flex-col justify-end bg-[linear-gradient(160deg,rgba(88,28,135,0.35)_0%,rgba(24,16,44,0.85)_60%,rgba(10,6,18,0.95)_100%)] p-5;
+        @apply absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-purple-500/20 via-white/10 to-transparent p-5;
     }
 
     .event-card__domain {
@@ -236,12 +282,51 @@
         @apply text-xs uppercase tracking-wide text-mystic-400;
     }
 
+    .event-card--project:not(.event-card--empty) .event-card__meta,
+    .event-card--event:not(.event-card--empty) .event-card__meta {
+        @apply text-xs font-semibold uppercase tracking-wider text-purple-950/90;
+    }
+
     .event-card__title {
         @apply mt-3 font-display text-xl font-semibold text-mystic-50;
     }
 
+    .event-card--project:not(.event-card--empty) .event-card__title,
+    .event-card--event:not(.event-card--empty) .event-card__title {
+        @apply text-purple-950;
+    }
+
+    .event-card__hostname {
+        @apply mt-2.5 min-w-0 truncate text-xs font-medium tracking-wide text-purple-200/95;
+    }
+
+    .event-card--project:not(.event-card--empty) .event-card__hostname,
+    .event-card--event:not(.event-card--empty) .event-card__hostname {
+        @apply text-purple-600;
+    }
+
+    .event-card__hostname-link {
+        @apply text-purple-200/95 underline decoration-purple-300/45 underline-offset-2 transition hover:text-mystic-50 hover:decoration-mystic-50/60;
+    }
+
+    .event-card--project:not(.event-card--empty) .event-card__hostname-link,
+    .event-card--event:not(.event-card--empty) .event-card__hostname-link {
+        @apply font-medium text-purple-600 decoration-purple-400/55;
+    }
+
+    .event-card--project:not(.event-card--empty) .event-card__hostname-link:hover,
+    .event-card--event:not(.event-card--empty) .event-card__hostname-link:hover {
+        @apply text-purple-500 decoration-purple-400/80;
+    }
+
+    /* Body copy only — one glass panel is .event-card__body; no inner “field” box */
     .event-card__description {
-        @apply mt-3 flex-1 text-sm leading-relaxed text-mystic-300;
+        @apply mt-4 flex-1 text-sm leading-relaxed text-mystic-300/90;
+    }
+
+    .event-card--project:not(.event-card--empty) .event-card__description,
+    .event-card--event:not(.event-card--empty) .event-card__description {
+        @apply text-purple-950;
     }
 
     .event-card__links {
@@ -269,7 +354,7 @@
     }
 
     .events-editor {
-        @apply rounded-2xl border border-white/10 bg-white/[0.04] p-6 shadow-[0_0_40px_rgba(88,28,135,0.15)] backdrop-blur-md md:p-8;
+        @apply rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 shadow-[0_0_40px_rgba(88,28,135,0.15)] backdrop-blur-xl md:p-8;
     }
 
     .events-editor__field {
@@ -281,15 +366,15 @@
     }
 
     .events-editor__input {
-        @apply rounded-xl border border-white/10 bg-mystic-900/70 px-4 py-2.5 text-sm text-mystic-100 outline-none transition placeholder:text-mystic-500 focus:border-purple-400/60;
+        @apply rounded-xl border border-white/[0.08] bg-white/[0.05] px-4 py-2.5 text-sm text-mystic-100 outline-none transition placeholder:text-mystic-500/80 focus:border-purple-400/50;
     }
 
     .events-editor__input--glass {
-        @apply bg-white/5 backdrop-blur-md;
+        @apply border-white/[0.07] bg-white/[0.04] backdrop-blur-lg;
     }
 
     .events-editor__dropzone {
-        @apply flex min-h-28 w-full flex-col items-center justify-center rounded-xl border border-dashed border-white/25 bg-mystic-900/55 px-4 py-4 text-sm text-mystic-200 transition hover:border-purple-400/55 hover:bg-mystic-900/70;
+        @apply flex min-h-28 w-full flex-col items-center justify-center rounded-xl border border-dashed border-white/20 bg-white/[0.04] px-4 py-4 text-sm text-mystic-200/95 backdrop-blur-md transition hover:border-purple-400/45 hover:bg-white/[0.06];
     }
 
     .events-editor__dropzone--active {
@@ -312,37 +397,52 @@
         @apply border-purple-500/35 bg-purple-500/15 text-mystic-50 hover:border-purple-400/60 hover:bg-purple-500/25;
     }
 
-    .featured-carousel-container {
-        @apply relative flex w-full max-w-4xl items-center justify-center;
+    /* One fixed viewport; slides stack with opacity (no vertical layout jump). */
+    .featured-carousel-wrap {
+        @apply relative w-full max-w-4xl;
     }
 
     .featured-carousel {
-        @apply relative w-full;
-        min-height: 560px;
+        @apply relative isolate w-full min-h-[560px] overflow-hidden;
     }
 
     .featured-carousel__arrow {
-        @apply absolute top-1/2 -translate-y-1/2 rounded-full border border-white/15 bg-white/5 p-3 text-mystic-200 transition hover:border-purple-400/45 hover:bg-white/10 hover:text-mystic-50 disabled:opacity-50;
-        z-index: 20;
+        @apply absolute top-1/2 z-40 -translate-y-1/2 rounded-full border border-white/25 bg-mystic-950/70 p-3 text-mystic-100 shadow-[0_4px_24px_rgba(0,0,0,0.45)] backdrop-blur-md transition hover:border-purple-400/50 hover:bg-purple-950/80 hover:text-white disabled:pointer-events-none disabled:opacity-35;
     }
 
     .featured-carousel__arrow--prev {
-        @apply left-4;
+        @apply left-2 md:left-4;
     }
 
     .featured-carousel__arrow--next {
-        @apply right-4;
+        @apply right-2 md:right-4;
     }
 
     .featured-carousel-item {
-        @apply transition-opacity duration-500;
+        @apply absolute inset-0 z-0 transition-opacity duration-300 ease-out;
         opacity: 0;
         pointer-events: none;
+        visibility: hidden;
+    }
+
+    .featured-carousel-item .event-card {
+        @apply h-full min-h-0;
+    }
+
+    .featured-carousel-item .event-card__stack {
+        @apply h-full min-h-0;
     }
 
     .featured-carousel-item--active {
+        @apply z-10;
         opacity: 1;
         pointer-events: auto;
+        visibility: visible;
+    }
+
+    /* Slightly sharper mshot previews in the featured strip */
+    .featured-carousel .event-card__preview-img {
+        @apply [image-rendering:auto];
     }
 
     .event-card--empty {
@@ -354,7 +454,7 @@
     }
 
     .event-list-item {
-        @apply flex gap-6 rounded-2xl border border-white/10 bg-white/[0.04] p-6 shadow-[0_0_40px_rgba(88,28,135,0.15)] backdrop-blur-md transition hover:border-purple-400/30 hover:shadow-[0_0_48px_rgba(88,28,135,0.2)] md:p-8;
+        @apply flex gap-6 rounded-2xl border border-white/12 bg-white/[0.03] p-6 shadow-[0_0_40px_rgba(88,28,135,0.15)] backdrop-blur-xl transition hover:border-purple-400/35 hover:shadow-[0_0_48px_rgba(88,28,135,0.22)] md:p-8;
     }
 
     .event-list-item__content {
@@ -374,7 +474,11 @@
     }
 
     .event-list-item__description {
-        @apply mt-4 text-sm leading-relaxed text-mystic-300;
+        @apply mt-4 text-sm leading-relaxed text-mystic-100/90;
+    }
+
+    .event-list-item__hostname {
+        @apply mt-1.5 min-w-0;
     }
 
     .event-list-item__link {
@@ -382,15 +486,19 @@
     }
 
     .event-list-item__image {
-        @apply h-48 w-48 flex-shrink-0 overflow-hidden rounded-xl bg-mystic-900/80;
+        @apply flex h-56 w-56 flex-shrink-0 overflow-hidden rounded-xl bg-transparent md:h-64 md:w-64;
     }
 
     .event-list-item__image img {
-        @apply h-full w-full object-cover;
+        @apply h-full w-full object-cover object-top;
+    }
+
+    .event-list-item__preview-img {
+        @apply object-top;
     }
 
     .event-list-item__fallback {
-        @apply flex h-full w-full flex-col justify-end bg-[linear-gradient(160deg,rgba(88,28,135,0.35)_0%,rgba(24,16,44,0.85)_60%,rgba(10,6,18,0.95)_100%)] p-4 text-center;
+        @apply flex h-full w-full flex-col justify-end bg-gradient-to-t from-purple-500/20 via-white/10 to-transparent p-4 text-center;
     }
 
     .event-list-item__domain {
